@@ -1,0 +1,24 @@
+[package]
+name = "miku-notes-gateway"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+anyhow = "1"
+tonic = "0.11"
+prost = "0.12"
+prost-types = "0.12"
+tokio-util = { version = "0.7", features = ["io"] }
+tokio = { version = "1.0", features = ["macros", "rt-multi-thread"] }
+chrono = { version = "0.4", features = ["serde"] }
+dotenvy = "0.15"
+tower-http = { version = "0.5", features = ["limit", "cors"] }
+hyper-util = "0.1.5"
+axum = { version = "0.7", features = ["multipart"] }
+axum-extra = { version = "0.9", features = ["cookie", "typed-header"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+time = "0.3.36"
+
+[build-dependencies]
+tonic-build = "0.11"
