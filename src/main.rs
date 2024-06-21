@@ -1,6 +1,7 @@
-mod routes;
-mod error;
 mod result;
+mod error;
+mod proto;
+mod routes;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {

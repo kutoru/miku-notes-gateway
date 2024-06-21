@@ -1,11 +1,10 @@
 use axum_extra::extract::CookieJar;
+use axum::{Json, http::StatusCode};
 use serde::Serialize;
-pub use axum::http::StatusCode;
-pub use axum::Json;
-pub use crate::error::ResError;
+use crate::error::ResError;
 
-pub type ServerResult<T> = anyhow::Result<(StatusCode, Json<ResultBody<T>>), ResError>;
-pub type CookieResult = anyhow::Result<(StatusCode, CookieJar, Json<ResultBody<()>>), ResError>;
+pub type ServerResult<T> = Result<(StatusCode, Json<ResultBody<T>>), ResError>;
+pub type CookieResult = Result<(StatusCode, CookieJar, Json<ResultBody<()>>), ResError>;
 
 #[derive(Debug, Serialize, Clone)]
 pub struct ResultBody<T> {

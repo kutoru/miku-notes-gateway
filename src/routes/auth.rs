@@ -1,12 +1,10 @@
+use crate::proto::auth::auth_client::AuthClient;
+use crate::proto::auth::{LoginRequest, RegisterRequest};
+
 use axum::{Router, routing::post, http::StatusCode, Json};
 use axum_extra::extract::cookie::{CookieJar, Cookie, SameSite};
-use anyhow::Result;
 
 use crate::{jar_res, result::{ResultBody, CookieResult}};
-
-pub mod auth_api {
-    tonic::include_proto!("auth");
-}
 
 pub fn get_router() -> Router {
     Router::new()
@@ -16,13 +14,13 @@ pub fn get_router() -> Router {
 
 async fn login_post(
     jar: CookieJar,
-    Json(body): Json<auth_api::LoginRequest>,
+    Json(body): Json<LoginRequest>,
 ) -> CookieResult {
 
     // calling the grpc auth api
 
-    let mut client = auth_api::auth_client::AuthClient::connect(std::env::var("AUTH_URL")?).await?;
-    let request = tonic::Request::new(auth_api::LoginRequest {
+    let mut client = AuthClient::connect(std::env::var("AUTH_URL")?).await?;
+    let request = tonic::Request::new(LoginRequest {
         email: body.email,
         password: body.password,
     });
@@ -39,11 +37,11 @@ async fn login_post(
 
 async fn register_post(
     jar: CookieJar,
-    Json(body): Json<auth_api::LoginRequest>,
+    Json(body): Json<LoginRequest>,
 ) -> CookieResult {
 
-    let mut client = auth_api::auth_client::AuthClient::connect(std::env::var("AUTH_URL")?).await?;
-    let request = tonic::Request::new(auth_api::RegisterRequest {
+    let mut client = AuthClient::connect(std::env::var("AUTH_URL")?).await?;
+    let request = tonic::Request::new(RegisterRequest {
         email: body.email,
         password: body.password,
     });
@@ -56,7 +54,7 @@ async fn register_post(
     jar_res!(StatusCode::OK, jar, true, None)
 }
 
-fn add_cookie(jar: CookieJar, token: String) -> Result<CookieJar> {
+fn add_cookie(jar: CookieJar, token: String) -> anyhow::Result<CookieJar> {
     let exp_time = time::Duration::seconds(
         std::env::var("TOKEN_EXP")?.parse()?
     );
