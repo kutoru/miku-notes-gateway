@@ -2,7 +2,7 @@ use axum::{Router, routing::post, http::StatusCode, Json};
 use axum_extra::extract::cookie::{CookieJar, Cookie, SameSite};
 use anyhow::Result;
 
-use crate::{models::auth::LoginPost, jar_res, result::{ResultBody, CookieResult}};
+use crate::{jar_res, result::{ResultBody, CookieResult}};
 
 pub mod auth_api {
     tonic::include_proto!("auth");
@@ -16,7 +16,7 @@ pub fn get_router() -> Router {
 
 async fn login_post(
     jar: CookieJar,
-    Json(body): Json<LoginPost>,
+    Json(body): Json<auth_api::LoginRequest>,
 ) -> CookieResult {
 
     // calling the grpc auth api
@@ -39,7 +39,7 @@ async fn login_post(
 
 async fn register_post(
     jar: CookieJar,
-    Json(body): Json<LoginPost>,
+    Json(body): Json<auth_api::LoginRequest>,
 ) -> CookieResult {
 
     let mut client = auth_api::auth_client::AuthClient::connect(std::env::var("AUTH_URL")?).await?;

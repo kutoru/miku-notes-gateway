@@ -1,6 +1,12 @@
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    tonic_build::compile_protos("./proto/sso.proto")?;
-    tonic_build::compile_protos("./proto/notes.proto")?;
+    tonic_build::configure()
+        .build_server(true)
+        .type_attribute(".", "#[derive(serde::Deserialize)]")
+        .compile(
+            &["./proto/sso.proto", "./proto/notes.proto", "./proto/tags.proto", "./proto/files.proto"],
+            &["./proto"],
+        )?;
+
     Ok(())
 }

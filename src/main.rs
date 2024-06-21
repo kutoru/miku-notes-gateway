@@ -1,5 +1,4 @@
 mod routes;
-mod models;
 mod error;
 mod result;
 
