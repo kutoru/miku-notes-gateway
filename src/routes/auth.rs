@@ -28,7 +28,6 @@ async fn login_post(
     });
 
     let response = client.login(request).await?;
-    println!("grpc login response = {:#?}", response);
     let token = response.into_inner().token;
 
     // sending the cookie
@@ -50,7 +49,6 @@ async fn register_post(
     });
 
     let response = client.register(request).await?;
-    println!("grpc register response = {:#?}", response);
     let token = response.into_inner().token;
 
     let jar = add_cookie(jar, token, state.token_exp);
