@@ -31,7 +31,7 @@ impl IntoResponse for ResError {
             Self::Forbidden(msg) => err_res(StatusCode::FORBIDDEN, msg),
             Self::BadRequest(msg) => err_res(StatusCode::BAD_REQUEST, msg),
 
-            Self::GRPCError(msg) => err_res(StatusCode::BAD_REQUEST, msg),
+            Self::GRPCError(msg) => err_res(StatusCode::INTERNAL_SERVER_ERROR, msg),
             Self::FSError(msg) => err_res(StatusCode::INTERNAL_SERVER_ERROR, msg),
             Self::ServerError(msg) => err_res(StatusCode::INTERNAL_SERVER_ERROR, msg),
         }.into_response()
@@ -90,9 +90,10 @@ impl From<tonic::Status> for ResError {
         let msg = get_msg(value.message());
         match value.code() {
             tonic::Code::NotFound => Self::NotFound(msg),
-            tonic::Code::InvalidArgument => Self::InvalidFields(msg),
             tonic::Code::Unauthenticated => Self::Unauthorized(msg),
             tonic::Code::PermissionDenied => Self::Forbidden(msg),
+            tonic::Code::InvalidArgument => Self::InvalidFields(msg),
+            tonic::Code::AlreadyExists => Self::BadRequest(msg),
             _ => Self::ServerError(msg),
         }
     }
