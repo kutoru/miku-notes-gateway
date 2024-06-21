@@ -2,12 +2,14 @@ use axum::{Router, http::{Method, header}, middleware::{Next, self}, response::R
 use axum_extra::extract::CookieJar;
 use tower_http::cors::CorsLayer;
 
+use crate::types::AppState;
+
 mod auth;
 // mod notes;
 
-pub fn get_router() -> anyhow::Result<Router> {
+pub fn get_router(state: &AppState) -> anyhow::Result<Router> {
     let origins = [
-        ("http://".to_owned() + &std::env::var("SERVICE_ADDR")?).parse()?,
+        ("http://".to_owned() + &state.service_addr).parse()?,
     ];
 
     let cors = CorsLayer::new()
@@ -16,8 +18,8 @@ pub fn get_router() -> anyhow::Result<Router> {
         .allow_headers([header::ACCEPT, header::CONTENT_TYPE])
         .allow_credentials(true);
 
-    let auth_router = auth::get_router();
-    // let notes_router = notes::get_router();
+    let auth_router = auth::get_router(state);
+    // let notes_router = notes::get_router(state);
 
     Ok(
         Router::new()
