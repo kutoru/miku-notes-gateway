@@ -1,4 +1,4 @@
-use crate::proto::notes::{ReadNotesReq, CreateNoteReq, UpdateNoteReq, DeleteNoteReq, Note, NoteList};
+use crate::proto::notes::{ReadNotesReq, CreateNoteReq, UpdateNoteReq, DeleteNoteReq, Note, NoteList, Empty};
 use crate::{types::{AppState, ServerResult, ResultBody}, res};
 
 use axum::{Router, routing::{patch, get}, extract::{State, Path}, Json, http::StatusCode, Extension};
@@ -42,16 +42,35 @@ async fn notes_post(
 }
 
 async fn notes_patch(
-    State(state): State<AppState>,
+    State(mut state): State<AppState>,
     Path(note_id): Path<i32>,
-    Json(body): Json<UpdateNoteReq>,
-) -> ServerResult<()> {
-    res!(StatusCode::NOT_IMPLEMENTED, false, None, None)
+    Extension(user_id): Extension<i32>,
+    Json(mut body): Json<UpdateNoteReq>,
+) -> ServerResult<Note> {
+
+    println!("notes_patch with note_id, user_id & body: {}, {}, {:#?}", note_id, user_id, body);
+    body.id = note_id;
+    body.user_id = user_id;
+    println!("Modified body: {:#?}", body);
+
+    let request = tonic::Request::new(body);
+    let response = state.notes_client.update_note(request).await?;
+    let updated_note = response.into_inner();
+
+    res!(StatusCode::OK, true, None, Some(updated_note))
 }
 
 async fn notes_delete(
-    State(state): State<AppState>,
+    State(mut state): State<AppState>,
     Path(note_id): Path<i32>,
-) -> ServerResult<()> {
-    res!(StatusCode::NOT_IMPLEMENTED, false, None, None)
+    Extension(user_id): Extension<i32>,
+) -> ServerResult<Empty> {
+
+    println!("notes_delete with note_id & user_id: {}, {}", note_id, user_id);
+
+    let request = tonic::Request::new(DeleteNoteReq { id: note_id, user_id });
+    let response = state.notes_client.delete_note(request).await?;
+    let res_body = response.into_inner();
+
+    res!(StatusCode::OK, true, None, Some(res_body))
 }
