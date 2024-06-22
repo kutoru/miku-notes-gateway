@@ -8,11 +8,19 @@ mod routes;
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
 
+    let rpc_clients = routes::get_rpc_clients(
+        dotenvy::var("AUTH_URL")?,
+        dotenvy::var("DATA_URL")?,
+    ).await?;
+
     let state = AppState {
         service_addr: dotenvy::var("SERVICE_ADDR")?,
-        auth_url: dotenvy::var("AUTH_URL")?,
-        data_url: dotenvy::var("DATA_URL")?,
         token_exp: dotenvy::var("TOKEN_EXP")?.parse()?,
+
+        auth_client: rpc_clients.0,
+        notes_client: rpc_clients.1,
+        // tags_client: grpc_clients.2,
+        // files_client: grpc_clients.3,
     };
 
     let app = routes::get_router(&state)?;

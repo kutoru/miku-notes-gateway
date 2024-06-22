@@ -1,7 +1,9 @@
 use axum_extra::extract::CookieJar;
 use axum::{Json, http::StatusCode};
 use serde::Serialize;
+use tonic::transport::Channel;
 
+use crate::proto::{notes::notes_client::NotesClient, tags::tags_client::TagsClient, files::files_client::FilesClient, auth::auth_client::AuthClient};
 use crate::error::ResError;
 
 pub type ServerResult<T> = Result<(StatusCode, Json<ResultBody<T>>), ResError>;
@@ -10,9 +12,12 @@ pub type CookieResult = Result<(StatusCode, CookieJar, Json<ResultBody<()>>), Re
 #[derive(Clone)]
 pub struct AppState {
     pub service_addr: String,
-    pub auth_url: String,
-    pub data_url: String,
     pub token_exp: i64,
+
+    pub auth_client: AuthClient<Channel>,
+    pub notes_client: NotesClient<Channel>,
+    // pub tags_client: TagsClient<Channel>,
+    // pub files_client: FilesClient<Channel>,
 }
 
 #[derive(Debug, Serialize, Clone)]

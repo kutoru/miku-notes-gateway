@@ -1,11 +1,25 @@
 use axum::{Router, http::{Method, header, StatusCode}, middleware::{Next, self}, response::Response};
 use axum_extra::extract::CookieJar;
+use tonic::transport::Channel;
 use tower_http::cors::CorsLayer;
 
+use crate::proto::{auth::auth_client::AuthClient, notes::notes_client::NotesClient, tags::tags_client::TagsClient, files::files_client::FilesClient};
 use crate::types::AppState;
 
 mod auth;
 mod notes;
+
+pub async fn get_rpc_clients(auth_url: String, data_url: String) -> anyhow::Result<(
+    AuthClient<Channel>,
+    NotesClient<Channel>,
+    // TagsClient<Channel>,
+    // FilesClient<Channel>
+)> {
+    Ok((
+        AuthClient::connect(auth_url).await?,
+        NotesClient::connect(data_url).await?,
+    ))
+}
 
 pub fn get_router(state: &AppState) -> anyhow::Result<Router> {
     let origins = [

@@ -1,4 +1,3 @@
-use crate::proto::auth::auth_client::AuthClient;
 use crate::proto::auth::{LoginRequest, RegisterRequest};
 
 use axum::{Router, routing::post, http::StatusCode, Json, extract::State};
@@ -15,19 +14,14 @@ pub fn get_router(state: &AppState) -> Router {
 
 async fn login_post(
     jar: CookieJar,
-    State(state): State<AppState>,
+    State(mut state): State<AppState>,
     Json(body): Json<LoginRequest>,
 ) -> CookieResult {
 
     // calling the grpc auth api
 
-    let mut client = AuthClient::connect(state.auth_url).await?;
-    let request = tonic::Request::new(LoginRequest {
-        email: body.email,
-        password: body.password,
-    });
-
-    let response = client.login(request).await?;
+    let request = tonic::Request::new(body);
+    let response = state.auth_client.login(request).await?;
     let token = response.into_inner().token;
 
     // sending the cookie
@@ -38,17 +32,12 @@ async fn login_post(
 
 async fn register_post(
     jar: CookieJar,
-    State(state): State<AppState>,
-    Json(body): Json<LoginRequest>,
+    State(mut state): State<AppState>,
+    Json(body): Json<RegisterRequest>,
 ) -> CookieResult {
 
-    let mut client = AuthClient::connect(state.auth_url).await?;
-    let request = tonic::Request::new(RegisterRequest {
-        email: body.email,
-        password: body.password,
-    });
-
-    let response = client.register(request).await?;
+    let request = tonic::Request::new(body);
+    let response = state.auth_client.register(request).await?;
     let token = response.into_inner().token;
 
     let jar = add_cookie(jar, token, state.token_exp);

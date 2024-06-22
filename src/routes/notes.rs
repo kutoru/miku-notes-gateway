@@ -1,4 +1,3 @@
-use crate::proto::notes::notes_client::NotesClient;
 use crate::proto::notes::{ReadNotesReq, CreateNoteReq, UpdateNoteReq, DeleteNoteReq, Note, NoteList};
 use crate::{types::{AppState, ServerResult, ResultBody}, res};
 
@@ -12,23 +11,21 @@ pub fn get_router(state: &AppState) -> Router {
 }
 
 async fn notes_get(
-    State(state): State<AppState>,
+    State(mut state): State<AppState>,
     Extension(user_id): Extension<i32>,
 ) -> ServerResult<NoteList> {
 
     println!("notes_get with user_id: {}", user_id);
 
-    let mut client = NotesClient::connect(state.data_url).await?;
     let request = tonic::Request::new(ReadNotesReq { user_id });
-
-    let response = client.read_notes(request).await?;
+    let response = state.notes_client.read_notes(request).await?;
     let note_list = response.into_inner();
 
     res!(StatusCode::OK, true, None, Some(note_list))
 }
 
 async fn notes_post(
-    State(state): State<AppState>,
+    State(mut state): State<AppState>,
     Extension(user_id): Extension<i32>,
     Json(mut body): Json<CreateNoteReq>,
 ) -> ServerResult<Note> {
@@ -37,10 +34,8 @@ async fn notes_post(
     body.user_id = user_id;
     println!("Modified body: {:#?}", body);
 
-    let mut client = NotesClient::connect(state.data_url).await?;
     let request = tonic::Request::new(body);
-
-    let response = client.create_note(request).await?;
+    let response = state.notes_client.create_note(request).await?;
     let new_note = response.into_inner();
 
     res!(StatusCode::OK, true, None, Some(new_note))
