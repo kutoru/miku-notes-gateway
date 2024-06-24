@@ -11,6 +11,7 @@ pub enum ResError {
 
     GRPCError(String),
     FSError(String),
+    NotImplemented(String),
     ServerError(String),  // anything else
 }
 
@@ -33,6 +34,7 @@ impl IntoResponse for ResError {
 
             Self::GRPCError(msg) => err_res(StatusCode::INTERNAL_SERVER_ERROR, msg),
             Self::FSError(msg) => err_res(StatusCode::INTERNAL_SERVER_ERROR, msg),
+            Self::NotImplemented(msg) => err_res(StatusCode::NOT_IMPLEMENTED, msg),
             Self::ServerError(msg) => err_res(StatusCode::INTERNAL_SERVER_ERROR, msg),
         }.into_response()
     }
@@ -94,6 +96,7 @@ impl From<tonic::Status> for ResError {
             tonic::Code::PermissionDenied => Self::Forbidden(msg),
             tonic::Code::InvalidArgument => Self::InvalidFields(msg),
             tonic::Code::AlreadyExists => Self::BadRequest(msg),
+            tonic::Code::Unimplemented => Self::NotImplemented(msg),
             _ => Self::ServerError(msg),
         }
     }
