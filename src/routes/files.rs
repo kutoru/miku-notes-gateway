@@ -35,6 +35,7 @@ async fn files_post(
     let mut file = tokio::fs::File::from_std(body.file.contents.into_file());
     let file_size = file.metadata().await.unwrap().len();
     let chunk_size = (1024 * 1024 * state.file_chunk_size) as u64;
+    file.set_max_buf_size(chunk_size as usize);
     let expected_parts = (file_size / chunk_size) as i32 + (file_size % chunk_size > 0) as i32;
     let last_part_len = (file_size % chunk_size) as usize;
     let mut buffer = vec![0; chunk_size as usize];
