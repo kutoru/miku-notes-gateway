@@ -8,16 +8,18 @@ use crate::types::AppState;
 
 mod auth;
 mod notes;
+mod files;
 
 pub async fn get_rpc_clients(auth_url: String, data_url: String) -> anyhow::Result<(
     AuthClient<Channel>,
     NotesClient<Channel>,
     // TagsClient<Channel>,
-    // FilesClient<Channel>
+    FilesClient<Channel>,
 )> {
     Ok((
         AuthClient::connect(auth_url).await?,
-        NotesClient::connect(data_url).await?,
+        NotesClient::connect(data_url.clone()).await?,
+        FilesClient::connect(data_url).await?,
     ))
 }
 
@@ -34,6 +36,7 @@ pub fn get_router(state: &AppState) -> anyhow::Result<Router> {
 
     let auth_router = auth::get_router(state);
     let notes_router = notes::get_router(state);
+    let files_router = files::get_router(state);
 
     Ok(
         Router::new()
@@ -42,6 +45,9 @@ pub fn get_router(state: &AppState) -> anyhow::Result<Router> {
             )
             .merge(
                 notes_router.route_layer(middleware::from_fn(auth_mw))
+            )
+            .merge(
+                files_router.route_layer(middleware::from_fn(auth_mw))
             )
             .layer(cors)
             .route_layer(middleware::from_fn(log_mw))

@@ -1,6 +1,8 @@
 use axum_extra::extract::CookieJar;
 use axum::{Json, http::StatusCode};
+use axum_typed_multipart::{TryFromMultipart, FieldData};
 use serde::Serialize;
+use tempfile::NamedTempFile;
 use tonic::transport::Channel;
 
 use crate::proto::{notes::notes_client::NotesClient, tags::tags_client::TagsClient, files::files_client::FilesClient, auth::auth_client::AuthClient};
@@ -17,7 +19,7 @@ pub struct AppState {
     pub auth_client: AuthClient<Channel>,
     pub notes_client: NotesClient<Channel>,
     // pub tags_client: TagsClient<Channel>,
-    // pub files_client: FilesClient<Channel>,
+    pub files_client: FilesClient<Channel>,
 }
 
 #[derive(Debug, Serialize, Clone)]
@@ -25,6 +27,14 @@ pub struct ResultBody<T> {
     pub success: bool,
     pub error: Option<String>,
     pub data: Option<T>,
+}
+
+#[derive(Debug, TryFromMultipart)]
+pub struct MultipartRequest {
+    // unlimited is supposed to follow the request body limit
+    #[form_data(limit = "unlimited")]
+    pub file: FieldData<NamedTempFile>,
+    pub note_id: i32,
 }
 
 #[macro_export]
