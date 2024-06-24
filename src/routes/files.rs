@@ -11,7 +11,7 @@ pub fn get_router(state: &AppState) -> Router {
         .route("/files", post(files_post))
         .layer(DefaultBodyLimit::disable())
         .layer(RequestBodyLimitLayer::new(
-            1024 * 1024 * 1024 * 2,  // 2gb
+            1024 * 1024 * state.req_body_limit,
         ))
         .route("/files/:id", get(files_get).delete(files_delete))
         .with_state(state.clone())
@@ -22,8 +22,6 @@ async fn files_post(
     Extension(user_id): Extension<i32>,
     TypedMultipart(body): TypedMultipart<MultipartRequest>,
 ) -> ServerResult<File> {
-
-    const CHUNK_SIZE: u64 = 1024 * 1024 * 10;  // 10mb
 
     // preparing basic file info
 
@@ -36,11 +34,12 @@ async fn files_post(
 
     let mut file = tokio::fs::File::from_std(body.file.contents.into_file());
     let file_size = file.metadata().await.unwrap().len();
-    let expected_parts = (file_size / CHUNK_SIZE) as i32 + (file_size % CHUNK_SIZE > 0) as i32;
-    let last_part_len = (file_size % CHUNK_SIZE) as usize;
-    let mut buffer = vec![0; CHUNK_SIZE as usize];
+    let chunk_size = (1024 * 1024 * state.file_chunk_size) as u64;
+    let expected_parts = (file_size / chunk_size) as i32 + (file_size % chunk_size > 0) as i32;
+    let last_part_len = (file_size % chunk_size) as usize;
+    let mut buffer = vec![0; chunk_size as usize];
     
-    println!("size, chunk, parts: {}, {}, {}", file_size, CHUNK_SIZE, expected_parts);
+    println!("size, chunk, parts: {}, {}, {}", file_size, chunk_size, expected_parts);
 
     // defining a stream that yields CreateFileReq objects with file data
 

@@ -14,7 +14,10 @@ pub type CookieResult = Result<(StatusCode, CookieJar, Json<ResultBody<()>>), Re
 #[derive(Clone)]
 pub struct AppState {
     pub service_addr: String,
+    pub frontend_url: String,
     pub token_exp: i64,
+    pub req_body_limit: usize,
+    pub file_chunk_size: usize,
 
     pub auth_client: AuthClient<Channel>,
     pub notes_client: NotesClient<Channel>,

@@ -26,6 +26,7 @@ pub async fn get_rpc_clients(auth_url: String, data_url: String) -> anyhow::Resu
 pub fn get_router(state: &AppState) -> anyhow::Result<Router> {
     let origins = [
         ("http://".to_owned() + &state.service_addr).parse()?,
+        state.frontend_url.parse()?,
     ];
 
     let cors = CorsLayer::new()
