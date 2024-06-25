@@ -1,4 +1,4 @@
-use crate::proto::files::{File, CreateFileReq, CreateFileMetadata};
+use crate::proto::files::{CreateFileMetadata, CreateFileReq, DeleteFileReq, File, Empty};
 use crate::{types::{AppState, ServerResult, ResultBody, MultipartRequest}, res, error::ResError};
 
 use axum::{Router, Json, routing::{post, get}, extract::{DefaultBodyLimit, State, Path}, Extension, http::StatusCode};
@@ -97,9 +97,13 @@ async fn files_delete(
     State(mut state): State<AppState>,
     Path(file_id): Path<i32>,
     Extension(user_id): Extension<i32>,
-) -> ServerResult<File> {
+) -> ServerResult<Empty> {
 
     println!("files_delete with file_id and user_id: {}, {}", file_id, user_id);
 
-    Err(ResError::NotImplemented("".into()))
+    let request = tonic::Request::new(DeleteFileReq { id: file_id, user_id: user_id });
+    let response = state.files_client.delete_file(request).await?;
+    let res_body = response.into_inner();
+
+    res!(StatusCode::OK, true, None, Some(res_body))
 }
