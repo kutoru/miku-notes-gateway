@@ -1,5 +1,5 @@
 use crate::proto::files::{CreateFileMetadata, CreateFileReq, DeleteFileReq, File, Empty};
-use crate::types::new_ok_res;
+use crate::types::{call_grpc_service, new_ok_res};
 use crate::{types::{AppState, ServerResult, MultipartRequest}, error::ResError};
 
 use axum::{Router, routing::{post, get}, extract::{DefaultBodyLimit, State, Path}, Extension, http::StatusCode};
@@ -31,14 +31,16 @@ async fn files_post(
 
     println!("files_post with user_id, note_id, name: {}, {}, {}", user_id, note_id, name);
 
-    // preparing async file and size info
+    // preparing the file and size info
 
     let mut file = tokio::fs::File::from_std(body.file.contents.into_file());
+
     let file_size = file.metadata().await.unwrap().len();
     let chunk_size = (1024 * 1024 * state.file_chunk_size) as u64;
-    file.set_max_buf_size(chunk_size as usize);
     let expected_parts = (file_size / chunk_size) as i32 + (file_size % chunk_size > 0) as i32;
     let last_part_len = (file_size % chunk_size) as usize;
+
+    file.set_max_buf_size(chunk_size as usize);
     let mut buffer = vec![0; chunk_size as usize];
     
     println!("size, chunk, parts: {}, {}, {}", file_size, chunk_size, expected_parts);
@@ -76,9 +78,11 @@ async fn files_post(
 
     // the usual rpc stuff
 
-    let request = tonic::Request::new(file_stream);
-    let response = state.files_client.create_file(request).await?;
-    let new_file = response.into_inner();
+    let new_file = call_grpc_service(
+        file_stream,
+        |req| state.files_client.create_file(req),
+        &state.data_token,
+    ).await?;
 
     new_ok_res(StatusCode::CREATED, new_file)
 }
@@ -102,9 +106,11 @@ async fn files_delete(
 
     println!("files_delete with file_id and user_id: {}, {}", file_id, user_id);
 
-    let request = tonic::Request::new(DeleteFileReq { id: file_id, user_id: user_id });
-    let response = state.files_client.delete_file(request).await?;
-    let res_body = response.into_inner();
+    let res_body = call_grpc_service(
+        DeleteFileReq { id: file_id, user_id: user_id },
+        |req| state.files_client.delete_file(req),
+        &state.data_token,
+    ).await?;
 
     new_ok_res(StatusCode::OK, res_body)
 }

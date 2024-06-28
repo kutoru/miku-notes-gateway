@@ -1,5 +1,5 @@
 use crate::proto::notes::{ReadNotesReq, CreateNoteReq, UpdateNoteReq, DeleteNoteReq, Note, NoteList, Empty};
-use crate::types::{new_ok_res, AppState, ServerResult};
+use crate::types::{call_grpc_service, new_ok_res, AppState, ServerResult};
 
 use axum::{Router, routing::{patch, get}, extract::{State, Path}, Json, http::StatusCode, Extension};
 
@@ -17,9 +17,11 @@ async fn notes_get(
 
     println!("notes_get with user_id: {}", user_id);
 
-    let request = tonic::Request::new(ReadNotesReq { user_id });
-    let response = state.notes_client.read_notes(request).await?;
-    let note_list = response.into_inner();
+    let note_list = call_grpc_service(
+        ReadNotesReq { user_id },
+        |req| state.notes_client.read_notes(req),
+        &state.data_token,
+    ).await?;
 
     new_ok_res(StatusCode::OK, note_list)
 }
@@ -31,12 +33,14 @@ async fn notes_post(
 ) -> ServerResult<Note> {
 
     println!("notes_post with user_id and body: {}, {:#?}", user_id, body);
-    body.user_id = user_id;
-    println!("Modified body: {:#?}", body);
 
-    let request = tonic::Request::new(body);
-    let response = state.notes_client.create_note(request).await?;
-    let new_note = response.into_inner();
+    body.user_id = user_id;
+
+    let new_note = call_grpc_service(
+        body,
+        |req| state.notes_client.create_note(req),
+        &state.data_token,
+    ).await?;
 
     new_ok_res(StatusCode::OK, new_note)
 }
@@ -49,13 +53,15 @@ async fn notes_patch(
 ) -> ServerResult<Note> {
 
     println!("notes_patch with note_id, user_id & body: {}, {}, {:#?}", note_id, user_id, body);
+
     body.id = note_id;
     body.user_id = user_id;
-    println!("Modified body: {:#?}", body);
 
-    let request = tonic::Request::new(body);
-    let response = state.notes_client.update_note(request).await?;
-    let updated_note = response.into_inner();
+    let updated_note = call_grpc_service(
+        body,
+        |req| state.notes_client.update_note(req),
+        &state.data_token,
+    ).await?;
 
     new_ok_res(StatusCode::OK, updated_note)
 }
@@ -68,9 +74,11 @@ async fn notes_delete(
 
     println!("notes_delete with note_id & user_id: {}, {}", note_id, user_id);
 
-    let request = tonic::Request::new(DeleteNoteReq { id: note_id, user_id });
-    let response = state.notes_client.delete_note(request).await?;
-    let res_body = response.into_inner();
+    let res_body = call_grpc_service(
+        DeleteNoteReq { id: note_id, user_id },
+        |req| state.notes_client.delete_note(req),
+        &state.data_token,
+    ).await?;
 
     new_ok_res(StatusCode::OK, res_body)
 }

@@ -1,4 +1,4 @@
-use crate::{error::ResError, proto::auth::{GetAtRequest, LoginRequest, RegisterRequest}, types::new_cookie_ok_res};
+use crate::{error::ResError, proto::auth::{GetAtRequest, LoginRequest, RegisterRequest}, types::{call_grpc_service, new_cookie_ok_res}};
 use crate::types::{CookieResult, AppState, CreateAndAddCookie};
 
 use axum::{extract::State, routing::{get, post}, Json, Router};
@@ -20,9 +20,11 @@ async fn login_post(
 
     // calling the grpc auth api
 
-    let request = tonic::Request::new(body);
-    let response = state.auth_client.login(request).await?;
-    let res_body = response.into_inner();
+    let res_body = call_grpc_service(
+        body,
+        |req| state.auth_client.login(req),
+        &state.auth_token,
+    ).await?;
 
     // sending the cookies
 
@@ -39,9 +41,11 @@ async fn register_post(
     Json(body): Json<RegisterRequest>,
 ) -> CookieResult {
 
-    let request = tonic::Request::new(body);
-    let response = state.auth_client.register(request).await?;
-    let res_body = response.into_inner();
+    let res_body = call_grpc_service(
+        body,
+        |req| state.auth_client.register(req),
+        &state.auth_token,
+    ).await?;
 
     new_cookie_ok_res(
         jar
@@ -59,9 +63,11 @@ async fn access_get(
         .ok_or(ResError::Unauthorized("Invalid creds".into()))?
         .value();
 
-    let request = tonic::Request::new(GetAtRequest { refresh_token: token.into() });
-    let response = state.auth_client.get_access_token(request).await?;
-    let res_body = response.into_inner();
+    let res_body = call_grpc_service(
+        GetAtRequest { refresh_token: token.into() },
+        |req| state.auth_client.get_access_token(req),
+        &state.auth_token,
+    ).await?;
 
     new_cookie_ok_res(
         jar
