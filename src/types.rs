@@ -1,6 +1,7 @@
 use axum_extra::extract::cookie::{CookieJar, Cookie, SameSite};
 use axum::{Json, http::StatusCode};
 use axum_typed_multipart::{TryFromMultipart, FieldData};
+use futures_util::Future;
 use serde::Serialize;
 use tempfile::NamedTempFile;
 use tonic::transport::Channel;
@@ -15,12 +16,16 @@ pub type CookieResult = Result<(StatusCode, CookieJar, Json<ResultBody<()>>), Re
 pub struct AppState {
     pub service_addr: String,
     pub frontend_url: String,
+    pub req_body_limit: usize,
+    pub file_chunk_size: usize,
+
     pub access_token_exp: i64,
     pub refresh_token_exp: i64,
     pub access_token_key: String,
     pub refresh_token_key: String,
-    pub req_body_limit: usize,
-    pub file_chunk_size: usize,
+
+    pub auth_token: String,
+    pub data_token: String,
 
     pub auth_client: AuthClient<Channel>,
     pub notes_client: NotesClient<Channel>,
@@ -41,6 +46,22 @@ pub struct MultipartRequest {
     #[form_data(limit = "unlimited")]
     pub file: FieldData<NamedTempFile>,
     pub note_id: i32,
+}
+
+pub async fn call_grpc_service<ReqBody, ReqFn, ResBody, ResFuture>(
+    body: ReqBody,
+    req_fn: ReqFn,
+    service_token: &str,
+) -> Result<ResBody, tonic::Status>
+where
+    ReqFn: FnOnce(tonic::Request<ReqBody>) -> ResFuture,
+    ResFuture: Future<Output = Result<tonic::Response<ResBody>, tonic::Status>>,
+{
+    let mut request = tonic::Request::new(body);
+    let header_value = ("Bearer: ".to_owned() + service_token).parse().unwrap();
+    request.metadata_mut().append("authorization", header_value);
+    let response = req_fn(request).await?;
+    Ok(response.into_inner())
 }
 
 pub trait CreateAndAddCookie {
