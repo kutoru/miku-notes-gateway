@@ -1,9 +1,8 @@
-use crate::proto::auth::{LoginRequest, RegisterRequest};
+use crate::{proto::auth::{LoginRequest, RegisterRequest}, types::new_cookie_ok_res};
+use crate::types::{CookieResult, AppState, CreateAndAddCookie};
 
-use axum::{Router, routing::post, http::StatusCode, Json, extract::State};
-use axum_extra::extract::cookie::{CookieJar, Cookie, SameSite};
-
-use crate::{jar_res, types::{ResultBody, CookieResult, AppState}};
+use axum::{Router, routing::post, Json, extract::State};
+use axum_extra::extract::cookie::CookieJar;
 
 pub fn get_router(state: &AppState) -> Router {
     Router::new()
@@ -22,12 +21,15 @@ async fn login_post(
 
     let request = tonic::Request::new(body);
     let response = state.auth_client.login(request).await?;
-    let token = response.into_inner().token;
+    let res_body = response.into_inner();
 
-    // sending the cookie
+    // sending the cookies
 
-    let jar = add_cookie(jar, token, state.token_exp);
-    jar_res!(StatusCode::OK, jar, true, None)
+    new_cookie_ok_res(
+        jar
+            .add_new_cookie(res_body.refresh_token, state.refresh_token_exp)
+            .add_new_cookie(res_body.access_token, state.access_token_exp)
+    )
 }
 
 async fn register_post(
@@ -38,21 +40,11 @@ async fn register_post(
 
     let request = tonic::Request::new(body);
     let response = state.auth_client.register(request).await?;
-    let token = response.into_inner().token;
+    let res_body = response.into_inner();
 
-    let jar = add_cookie(jar, token, state.token_exp);
-    jar_res!(StatusCode::OK, jar, true, None)
-}
-
-fn add_cookie(jar: CookieJar, token: String, token_exp: i64) -> CookieJar {
-    let exp_time = time::Duration::seconds(token_exp);
-
-    let cookie = Cookie::build(("at", token))
-        .max_age(exp_time)
-        .path("/")
-        .same_site(SameSite::None)
-        .http_only(true)
-        .secure(false);
-
-    jar.add(cookie)
+    new_cookie_ok_res(
+        jar
+            .add_new_cookie(res_body.refresh_token, state.refresh_token_exp)
+            .add_new_cookie(res_body.access_token, state.access_token_exp)
+    )
 }

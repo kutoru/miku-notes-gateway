@@ -1,5 +1,5 @@
 use crate::proto::notes::{ReadNotesReq, CreateNoteReq, UpdateNoteReq, DeleteNoteReq, Note, NoteList, Empty};
-use crate::{types::{AppState, ServerResult, ResultBody}, res};
+use crate::types::{new_ok_res, AppState, ServerResult};
 
 use axum::{Router, routing::{patch, get}, extract::{State, Path}, Json, http::StatusCode, Extension};
 
@@ -21,7 +21,7 @@ async fn notes_get(
     let response = state.notes_client.read_notes(request).await?;
     let note_list = response.into_inner();
 
-    res!(StatusCode::OK, true, None, Some(note_list))
+    new_ok_res(StatusCode::OK, note_list)
 }
 
 async fn notes_post(
@@ -38,7 +38,7 @@ async fn notes_post(
     let response = state.notes_client.create_note(request).await?;
     let new_note = response.into_inner();
 
-    res!(StatusCode::OK, true, None, Some(new_note))
+    new_ok_res(StatusCode::OK, new_note)
 }
 
 async fn notes_patch(
@@ -57,7 +57,7 @@ async fn notes_patch(
     let response = state.notes_client.update_note(request).await?;
     let updated_note = response.into_inner();
 
-    res!(StatusCode::OK, true, None, Some(updated_note))
+    new_ok_res(StatusCode::OK, updated_note)
 }
 
 async fn notes_delete(
@@ -72,5 +72,5 @@ async fn notes_delete(
     let response = state.notes_client.delete_note(request).await?;
     let res_body = response.into_inner();
 
-    res!(StatusCode::OK, true, None, Some(res_body))
+    new_ok_res(StatusCode::OK, res_body)
 }

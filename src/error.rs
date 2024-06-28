@@ -1,5 +1,5 @@
-use axum::{response::{IntoResponse, Response}, http::{StatusCode, header::InvalidHeaderValue}, Json};
-use crate::{types::{ResultBody, ServerResult}, res};
+use axum::{response::{IntoResponse, Response}, http::{StatusCode, header::InvalidHeaderValue}};
+use crate::types::new_err_res;
 
 #[derive(Debug)]
 pub enum ResError {
@@ -26,23 +26,18 @@ impl std::error::Error for ResError {}
 impl IntoResponse for ResError {
     fn into_response(self) -> Response {
         match self {
-            Self::InvalidFields(msg) => err_res(StatusCode::UNPROCESSABLE_ENTITY, msg),
-            Self::NotFound(msg) => err_res(StatusCode::NOT_FOUND, msg),
-            Self::Unauthorized(msg) => err_res(StatusCode::UNAUTHORIZED, msg),
-            Self::Forbidden(msg) => err_res(StatusCode::FORBIDDEN, msg),
-            Self::BadRequest(msg) => err_res(StatusCode::BAD_REQUEST, msg),
+            Self::InvalidFields(msg) => new_err_res(StatusCode::UNPROCESSABLE_ENTITY, msg),
+            Self::NotFound(msg) => new_err_res(StatusCode::NOT_FOUND, msg),
+            Self::Unauthorized(msg) => new_err_res(StatusCode::UNAUTHORIZED, msg),
+            Self::Forbidden(msg) => new_err_res(StatusCode::FORBIDDEN, msg),
+            Self::BadRequest(msg) => new_err_res(StatusCode::BAD_REQUEST, msg),
 
-            Self::GRPCError(msg) => err_res(StatusCode::INTERNAL_SERVER_ERROR, msg),
-            Self::FSError(msg) => err_res(StatusCode::INTERNAL_SERVER_ERROR, msg),
-            Self::NotImplemented(msg) => err_res(StatusCode::NOT_IMPLEMENTED, msg),
-            Self::ServerError(msg) => err_res(StatusCode::INTERNAL_SERVER_ERROR, msg),
+            Self::GRPCError(msg) => new_err_res(StatusCode::INTERNAL_SERVER_ERROR, msg),
+            Self::FSError(msg) => new_err_res(StatusCode::INTERNAL_SERVER_ERROR, msg),
+            Self::NotImplemented(msg) => new_err_res(StatusCode::NOT_IMPLEMENTED, msg),
+            Self::ServerError(msg) => new_err_res(StatusCode::INTERNAL_SERVER_ERROR, msg),
         }.into_response()
     }
-}
-
-fn err_res(code: StatusCode, msg: String) -> (StatusCode, Json<ResultBody<()>>) {
-    let res: ServerResult<()> = res!(code, false, Some(msg), None);
-    res.unwrap()
 }
 
 fn get_msg<T: std::fmt::Debug>(value: T) -> String {

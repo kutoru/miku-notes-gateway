@@ -1,4 +1,4 @@
-use axum_extra::extract::CookieJar;
+use axum_extra::extract::cookie::{CookieJar, Cookie, SameSite};
 use axum::{Json, http::StatusCode};
 use axum_typed_multipart::{TryFromMultipart, FieldData};
 use serde::Serialize;
@@ -15,7 +15,8 @@ pub type CookieResult = Result<(StatusCode, CookieJar, Json<ResultBody<()>>), Re
 pub struct AppState {
     pub service_addr: String,
     pub frontend_url: String,
-    pub token_exp: i64,
+    pub access_token_exp: i64,
+    pub refresh_token_exp: i64,
     pub req_body_limit: usize,
     pub file_chunk_size: usize,
 
@@ -40,16 +41,39 @@ pub struct MultipartRequest {
     pub note_id: i32,
 }
 
-#[macro_export]
-macro_rules! res {
-    ($code:expr, $success:expr, $msg:expr, $data:expr) => {
-        Ok(($code, Json(ResultBody { success: $success, error: $msg, data: $data })))
+pub trait CreateAndAddCookie {
+    fn add_new_cookie(self, token: String, token_exp: i64) -> Self;
+}
+impl CreateAndAddCookie for CookieJar {
+    fn add_new_cookie(self, token: String, token_exp: i64) -> Self {
+        let exp_time = time::Duration::seconds(token_exp);
+
+        let cookie = Cookie::build(("at", token))
+            .max_age(exp_time)
+            .path("/")
+            .same_site(SameSite::None)
+            .http_only(true)
+            .secure(false);
+
+        self.add(cookie)
     }
 }
 
-#[macro_export]
-macro_rules! jar_res {
-    ($code:expr, $jar:expr, $success:expr, $msg:expr) => {
-        Ok(($code, $jar, Json(ResultBody { success: $success, error: $msg, data: None })))
-    }
+pub fn new_ok_res<T>(code: StatusCode, data: T) -> ServerResult<T> {
+    Ok((
+        code,
+        Json(ResultBody { success: true, error: None, data: Some(data) }),
+    ))
+}
+
+pub fn new_cookie_ok_res(jar: CookieJar) -> CookieResult {
+    Ok((
+        StatusCode::OK,
+        jar,
+        Json(ResultBody { success: true, error: None, data: None }),
+    ))
+}
+
+pub fn new_err_res(code: StatusCode, msg: String) -> (StatusCode, Json<ResultBody<()>>) {
+    (code, Json(ResultBody { success: false, error: Some(msg), data: None }))
 }

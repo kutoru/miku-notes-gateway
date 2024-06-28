@@ -1,7 +1,8 @@
 use crate::proto::files::{CreateFileMetadata, CreateFileReq, DeleteFileReq, File, Empty};
-use crate::{types::{AppState, ServerResult, ResultBody, MultipartRequest}, res, error::ResError};
+use crate::types::new_ok_res;
+use crate::{types::{AppState, ServerResult, MultipartRequest}, error::ResError};
 
-use axum::{Router, Json, routing::{post, get}, extract::{DefaultBodyLimit, State, Path}, Extension, http::StatusCode};
+use axum::{Router, routing::{post, get}, extract::{DefaultBodyLimit, State, Path}, Extension, http::StatusCode};
 use tower_http::limit::RequestBodyLimitLayer;
 use axum_typed_multipart::TypedMultipart;
 use tokio::io::AsyncReadExt;
@@ -79,7 +80,7 @@ async fn files_post(
     let response = state.files_client.create_file(request).await?;
     let new_file = response.into_inner();
 
-    res!(StatusCode::CREATED, true, None, Some(new_file))
+    new_ok_res(StatusCode::CREATED, new_file)
 }
 
 async fn files_get(
@@ -105,5 +106,5 @@ async fn files_delete(
     let response = state.files_client.delete_file(request).await?;
     let res_body = response.into_inner();
 
-    res!(StatusCode::OK, true, None, Some(res_body))
+    new_ok_res(StatusCode::OK, res_body)
 }
