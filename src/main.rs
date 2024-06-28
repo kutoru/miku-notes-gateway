@@ -18,6 +18,8 @@ async fn main() -> anyhow::Result<()> {
         frontend_url: dotenvy::var("FRONTEND_URL")?,
         access_token_exp: dotenvy::var("ACCESS_TOKEN_EXP")?.parse()?,
         refresh_token_exp: dotenvy::var("REFRESH_TOKEN_EXP")?.parse()?,
+        access_token_key: dotenvy::var("ACCESS_TOKEN_KEY")?,
+        refresh_token_key: dotenvy::var("REFRESH_TOKEN_KEY")?,
         req_body_limit: dotenvy::var("MAX_REQUEST_BODY_SIZE_IN_MB")?.parse()?,
         file_chunk_size: dotenvy::var("MAX_FILE_CHUNK_SIZE_IN_MB")?.parse()?,
 

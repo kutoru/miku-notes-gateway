@@ -17,6 +17,8 @@ pub struct AppState {
     pub frontend_url: String,
     pub access_token_exp: i64,
     pub refresh_token_exp: i64,
+    pub access_token_key: String,
+    pub refresh_token_key: String,
     pub req_body_limit: usize,
     pub file_chunk_size: usize,
 
@@ -42,13 +44,13 @@ pub struct MultipartRequest {
 }
 
 pub trait CreateAndAddCookie {
-    fn add_new_cookie(self, token: String, token_exp: i64) -> Self;
+    fn add_new_cookie(self, _: String,  _: String, _: i64) -> Self;
 }
 impl CreateAndAddCookie for CookieJar {
-    fn add_new_cookie(self, token: String, token_exp: i64) -> Self {
+    fn add_new_cookie(self, cookie_key: String, token: String, token_exp: i64) -> Self {
         let exp_time = time::Duration::seconds(token_exp);
 
-        let cookie = Cookie::build(("at", token))
+        let cookie = Cookie::build((cookie_key, token))
             .max_age(exp_time)
             .path("/")
             .same_site(SameSite::None)
