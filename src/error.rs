@@ -1,12 +1,16 @@
 use axum::{response::{IntoResponse, Response}, http::{StatusCode, header::InvalidHeaderValue}};
 use crate::types::new_err_res;
 
+// about 4xx status codes
+// https://stackoverflow.com/a/52098667
+
 #[derive(Debug)]
 pub enum ResError {
-    InvalidFields(String),  // when the fields are missing or invalid
+    InvalidFields(String),  // when one or more fields are missing
+    InvalidValues(String),  // when the fields are present but the value types are invalid
     NotFound(String),  // when getting, patching or deleting something that doesn't exist
     Unauthorized(String),  // when the request is lacking credentials
-    Forbidden(String),  // when the request is authorized but not allowed to access a resource
+    Forbidden(String),  // when the request is authenticated but not allowed to access a resource
     BadRequest(String),  // when the issue with the request is too hard to explain
 
     GRPCError(String),
@@ -26,7 +30,8 @@ impl std::error::Error for ResError {}
 impl IntoResponse for ResError {
     fn into_response(self) -> Response {
         match self {
-            Self::InvalidFields(msg) => new_err_res(StatusCode::UNPROCESSABLE_ENTITY, msg),
+            Self::InvalidFields(msg) => new_err_res(StatusCode::BAD_REQUEST, msg),
+            Self::InvalidValues(msg) => new_err_res(StatusCode::UNPROCESSABLE_ENTITY, msg),
             Self::NotFound(msg) => new_err_res(StatusCode::NOT_FOUND, msg),
             Self::Unauthorized(msg) => new_err_res(StatusCode::UNAUTHORIZED, msg),
             Self::Forbidden(msg) => new_err_res(StatusCode::FORBIDDEN, msg),
