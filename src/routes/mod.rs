@@ -1,10 +1,10 @@
-use axum::{Router, http::{Method, header, StatusCode}, middleware::{Next, self}, response::Response};
+use axum::{extract::State, http::{header, Method}, middleware::{self, Next}, response::Response, Router};
 use axum_extra::extract::CookieJar;
 use tonic::transport::Channel;
 use tower_http::cors::CorsLayer;
 
 use crate::proto::{auth::auth_client::AuthClient, notes::notes_client::NotesClient, tags::tags_client::TagsClient, files::files_client::FilesClient};
-use crate::types::AppState;
+use crate::{error::ResError, proto::auth::ValidateAtRequest, types::AppState};
 
 mod auth;
 mod notes;
@@ -45,10 +45,10 @@ pub fn get_router(state: &AppState) -> anyhow::Result<Router> {
                 auth_router
             )
             .merge(
-                notes_router.route_layer(middleware::from_fn(auth_mw))
+                notes_router.route_layer(middleware::from_fn_with_state(state.clone(), auth_mw))
             )
             .merge(
-                files_router.route_layer(middleware::from_fn(auth_mw))
+                files_router.route_layer(middleware::from_fn_with_state(state.clone(), auth_mw))
             )
             .layer(cors)
             .route_layer(middleware::from_fn(log_mw))
@@ -57,24 +57,26 @@ pub fn get_router(state: &AppState) -> anyhow::Result<Router> {
 
 async fn auth_mw(
     jar: CookieJar,
+    State(mut state): State<AppState>,
     mut req: axum::extract::Request,
     next: Next,
-) -> Result<Response, StatusCode> {
-    let token = match jar.get("at") {
+) -> Result<Response, ResError> {
+    let token = match jar.get(&state.access_token_key) {
         Some(c) => {
             println!("AT TOKEN: {:?}", c.value());
             c.value()
         },
         None => {
             println!("NO AT TOKEN");
-            return Err(StatusCode::UNAUTHORIZED);
+            return Err(ResError::Unauthorized("Invalid creds".into()));
         },
     };
 
-    // extract user id from the token
-    let user_id = 2;
+    let request = tonic::Request::new(ValidateAtRequest { access_token: token.into() });
+    let response = state.auth_client.validate_access_token(request).await?;
+    let user_id = response.into_inner().user_id;
 
-    req.extensions_mut().insert(user_id);
+    req.extensions_mut().insert(user_id as i32);
     Ok(next.run(req).await)
 }
 
