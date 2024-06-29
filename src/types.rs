@@ -58,7 +58,7 @@ where
     ResFuture: Future<Output = Result<tonic::Response<ResBody>, tonic::Status>>,
 {
     let mut request = tonic::Request::new(body);
-    let header_value = ("Bearer: ".to_owned() + service_token).parse().unwrap();
+    let header_value = format!("Bearer {}", service_token).parse().unwrap();
     request.metadata_mut().append("authorization", header_value);
     let response = req_fn(request).await?;
     Ok(response.into_inner())
