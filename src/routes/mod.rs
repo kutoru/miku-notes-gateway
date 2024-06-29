@@ -3,7 +3,7 @@ use axum_extra::extract::CookieJar;
 use tonic::transport::Channel;
 use tower_http::cors::CorsLayer;
 
-use crate::proto::{auth::auth_client::AuthClient, notes::notes_client::NotesClient, tags::tags_client::TagsClient, files::files_client::FilesClient};
+use crate::{proto::{auth::auth_client::AuthClient, files::files_client::FilesClient, notes::notes_client::NotesClient, tags::tags_client::TagsClient}, types::call_grpc_service};
 use crate::{error::ResError, proto::auth::ValidateAtRequest, types::AppState};
 
 mod auth;
@@ -25,7 +25,7 @@ pub async fn get_rpc_clients(auth_url: String, data_url: String) -> anyhow::Resu
 
 pub fn get_router(state: &AppState) -> anyhow::Result<Router> {
     let origins = [
-        ("http://".to_owned() + &state.service_addr).parse()?,
+        format!("http://{}", state.service_addr).parse()?,
         state.frontend_url.parse()?,
     ];
 
@@ -63,20 +63,22 @@ async fn auth_mw(
 ) -> Result<Response, ResError> {
     let token = match jar.get(&state.access_token_key) {
         Some(c) => {
-            println!("AT TOKEN: {:?}", c.value());
+            println!("ACCESS TOKEN: {:?}", c.value());
             c.value()
         },
         None => {
-            println!("NO AT TOKEN");
-            return Err(ResError::Unauthorized("Invalid creds".into()));
+            println!("NO ACCESS TOKEN");
+            return Err(ResError::Unauthorized("Unauthorized".into()));
         },
     };
 
-    let request = tonic::Request::new(ValidateAtRequest { access_token: token.into() });
-    let response = state.auth_client.validate_access_token(request).await?;
-    let user_id = response.into_inner().user_id;
+    let res_body = call_grpc_service(
+        ValidateAtRequest { access_token: token.into() },
+        |req| state.auth_client.validate_access_token(req),
+        &state.auth_token,
+    ).await?;
 
-    req.extensions_mut().insert(user_id as i32);
+    req.extensions_mut().insert(res_body.user_id);
     Ok(next.run(req).await)
 }
 
