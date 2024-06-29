@@ -31,8 +31,8 @@ The .env file should be located in the root directory and have the following con
 ```
 SERVICE_ADDR=127.0.0.1:33033
 FRONTEND_URL=http://localhost:5173
-MAX_REQUEST_BODY_SIZE_IN_MB=4096
-MAX_FILE_CHUNK_SIZE_IN_MB=8
+MAX_REQUEST_BODY_SIZE=4096
+MAX_FILE_CHUNK_SIZE=8
 
 AUTH_URL=http://127.0.0.1:44044
 DATA_URL=http://127.0.0.1:55055
@@ -42,13 +42,13 @@ DATA_TOKEN=39sankyu39
 ACCESS_TOKEN_KEY=at
 REFRESH_TOKEN_KEY=rt
 ACCESS_TOKEN_EXP=30
-REFRESH_TOKEN_EXP=90
+REFRESH_TOKEN_EXP=120
 ```
 Where:
 - `SERVICE_ADDR` is the address that this service will run on
 - `FRONTEND_URL` is the url that the **Frontend** is running on. Required for CORS stuff
-- `MAX_REQUEST_BODY_SIZE_IN_MB` is an unsigned int that will become the maximum allowed size (in megabytes) for received multipart request bodies. Files received from multipart bodies never get loaded into memory, so big numbers (up to like 50GB) should in theory be fine as a value for this field, although big files like that will take a long time to get uploaded
-- `MAX_FILE_CHUNK_SIZE_IN_MB` is an unsigned int that will become the maximum allowed size (in megabytes) for sent file chunks in gRPC messages. **Note** that this value should be identical to or smaller than the **Data service**'s .env value with the identical key name, or else stuff will go wrong
+- `MAX_REQUEST_BODY_SIZE` is an unsigned int that will become the maximum allowed size (in megabytes) for received multipart request bodies. Files received from multipart bodies never get loaded into memory, so big numbers (up to like 50GB) should in theory be fine as a value for this field, although big files like that will take a long time to get uploaded
+- `MAX_FILE_CHUNK_SIZE` is an unsigned int that will become the maximum allowed size (in megabytes) for sent file chunks in gRPC messages. **Note** that this value should be identical to or smaller than the **Data service**'s .env value with the identical key name, or else stuff will go wrong
 
 - `AUTH_URL` is the url that the **Auth service** is running on
 - `DATA_URL` is the url that the **Data service** is running on

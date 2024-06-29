@@ -16,8 +16,8 @@ async fn main() -> anyhow::Result<()> {
     let state = AppState {
         service_addr: dotenvy::var("SERVICE_ADDR")?,
         frontend_url: dotenvy::var("FRONTEND_URL")?,
-        req_body_limit: dotenvy::var("MAX_REQUEST_BODY_SIZE_IN_MB")?.parse()?,
-        file_chunk_size: dotenvy::var("MAX_FILE_CHUNK_SIZE_IN_MB")?.parse()?,
+        req_body_limit: dotenvy::var("MAX_REQUEST_BODY_SIZE")?.parse()?,
+        file_chunk_size: dotenvy::var("MAX_FILE_CHUNK_SIZE")?.parse()?,
 
         access_token_exp: dotenvy::var("ACCESS_TOKEN_EXP")?.parse()?,
         refresh_token_exp: dotenvy::var("REFRESH_TOKEN_EXP")?.parse()?,
