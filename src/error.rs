@@ -92,11 +92,15 @@ impl From<tonic::Status> for ResError {
         let msg = get_msg(value.message());
         match value.code() {
             tonic::Code::NotFound => Self::NotFound(msg),
-            tonic::Code::Unauthenticated => Self::Unauthorized(msg),
             tonic::Code::PermissionDenied => Self::Forbidden(msg),
             tonic::Code::InvalidArgument => Self::InvalidFields(msg),
             tonic::Code::AlreadyExists => Self::BadRequest(msg),
             tonic::Code::Unimplemented => Self::NotImplemented(msg),
+            tonic::Code::Unauthenticated => match msg.as_str() {
+                "invalid authorization token" => Self::ServerError("Server error".into()),
+                _ => Self::Unauthorized(msg),
+            },
+
             _ => Self::ServerError(msg),
         }
     }
