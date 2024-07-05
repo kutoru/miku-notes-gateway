@@ -41,11 +41,13 @@ pub struct ResultBody<T> {
 }
 
 #[derive(Debug, TryFromMultipart)]
+// #[try_from_multipart(rename_all = "camelCase")]
 pub struct MultipartRequest {
     // unlimited is supposed to follow the request body limit
     #[form_data(limit = "unlimited")]
     pub file: FieldData<NamedTempFile>,
-    pub note_id: i32,
+    pub note_id: Option<i32>,
+    pub shelf_id: Option<i32>,
 }
 
 pub async fn call_grpc_service<ReqBody, ReqFn, ResBody, ResFuture>(

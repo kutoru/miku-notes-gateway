@@ -17,8 +17,12 @@ async fn notes_get(
 
     println!("notes_get with user_id: {}", user_id);
 
+    let body = ReadNotesReq {
+        ..Default::default()
+    };
+
     let note_list = call_grpc_service(
-        ReadNotesReq { user_id },
+        body,
         |req| state.notes_client.read_notes(req),
         &state.data_token,
     ).await?;

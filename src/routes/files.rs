@@ -1,3 +1,4 @@
+use crate::proto::files::create_file_metadata::AttachId;
 use crate::proto::files::{CreateFileMetadata, CreateFileReq, DeleteFileReq, DownloadFileReq, Empty, File, FileData};
 use crate::types::{call_grpc_service, new_ok_res};
 use crate::{types::{AppState, ServerResult, MultipartRequest}, error::ResError};
@@ -39,10 +40,14 @@ async fn files_post(
 
     // preparing basic file info
 
-    let note_id = body.note_id;
     let name = body.file.metadata.file_name.unwrap_or("".into());
+    let attach_id = match (body.note_id, body.shelf_id) {
+        (Some(n), None) => AttachId::NoteId(n),
+        (None, Some(s)) => AttachId::ShelfId(s),
+        _ => return Err(ResError::InvalidFields("invalid fields".into())),
+    };
 
-    println!("files_post with user_id, note_id, name: {}, {}, {}", user_id, note_id, name);
+    println!("files_post with user_id, attach_id, name: {}, {:?}, {}", user_id, attach_id, name);
 
     // preparing the file and size info
 
@@ -71,7 +76,7 @@ async fn files_post(
             let metadata = match i == 1 {
                 true => Some(CreateFileMetadata {
                     user_id: user_id,
-                    note_id: note_id,
+                    attach_id: Some(attach_id),
                     name: name.clone(),
                     expected_parts: expected_parts,
                 }),
@@ -122,27 +127,22 @@ async fn files_dl_get(
         None => return Err(ResError::ServerError("Server error".into())),
     };
 
-    let content_type = mime_guess::from_path(&file_name).first_raw()
-        .ok_or(ResError::ServerError("Server error".into()))?;
-
     let body = Body::from_stream(stream);
 
-    let headers = [
-        (
-            header::CONTENT_TYPE,
-            content_type,
-        ),
-        (
-            header::CONTENT_LENGTH,
-            &file_size.to_string(),
-        ),
-        (
-            header::CONTENT_DISPOSITION,
-            &format!("attachment; filename=\"{}\"", file_name),
-        ),
-    ];
+    let content_length = (header::CONTENT_LENGTH, file_size.to_string());
+    let content_disposition = (header::CONTENT_DISPOSITION, format!("attachment; filename=\"{}\"", file_name));
 
-    Ok((headers, body).into_response())
+    // https://stackoverflow.com/a/28652339
+    match mime_guess::from_path(&file_name).first().map(|h| h.to_string()) {
+        Some(content_type) => Ok((
+            [content_length, content_disposition, (header::CONTENT_TYPE, content_type)],
+            body,
+        ).into_response()),
+        None => Ok((
+            [content_length, content_disposition],
+            body,
+        ).into_response()),
+    }
 }
 
 async fn files_delete(
