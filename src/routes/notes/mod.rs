@@ -1,7 +1,11 @@
-use crate::proto::notes::{ReadNotesReq, CreateNoteReq, UpdateNoteReq, DeleteNoteReq, Note, NoteList, Empty};
+use crate::proto::notes::{CreateNoteReq, DeleteNoteReq, Empty, Note, NoteList, ReadNotesReq, UpdateNoteReq};
 use crate::types::{call_grpc_service, new_ok_res, AppState, ServerResult};
 
+use axum::extract::Query;
 use axum::{Router, routing::{patch, get}, extract::{State, Path}, Json, http::StatusCode, Extension};
+
+use helpers::NoteQuery;
+mod helpers;
 
 pub fn get_router(state: &AppState) -> Router {
     Router::new()
@@ -13,12 +17,16 @@ pub fn get_router(state: &AppState) -> Router {
 async fn notes_get(
     State(mut state): State<AppState>,
     Extension(user_id): Extension<i32>,
+    Query(query): Query<NoteQuery>,
 ) -> ServerResult<NoteList> {
 
-    println!("notes_get with user_id: {}", user_id);
+    println!("notes_get with user_id and query: {}, {:?}", user_id, query);
 
     let body = ReadNotesReq {
-        ..Default::default()
+        user_id,
+        pagination: Some(query.pagination),
+        sort: Some(query.sort),
+        filters: Some(query.filters),
     };
 
     let note_list = call_grpc_service(
