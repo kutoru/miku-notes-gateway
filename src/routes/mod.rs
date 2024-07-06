@@ -3,25 +3,28 @@ use axum_extra::extract::CookieJar;
 use tonic::transport::Channel;
 use tower_http::cors::CorsLayer;
 
-use crate::{proto::{auth::auth_client::AuthClient, files::files_client::FilesClient, notes::notes_client::NotesClient, tags::tags_client::TagsClient}, types::call_grpc_service};
+use crate::{proto::{auth::auth_client::AuthClient, files::files_client::FilesClient, notes::notes_client::NotesClient, shelves::shelves_client::ShelvesClient, tags::tags_client::TagsClient}, types::call_grpc_service};
 use crate::{error::ResError, proto::auth::ValidateAtRequest, types::AppState};
 
 mod auth;
 mod notes;
 mod tags;
 mod files;
+mod shelves;
 
 pub async fn get_rpc_clients(auth_url: String, data_url: String) -> anyhow::Result<(
     AuthClient<Channel>,
     NotesClient<Channel>,
     TagsClient<Channel>,
     FilesClient<Channel>,
+    ShelvesClient<Channel>,
 )> {
     Ok((
         AuthClient::connect(auth_url).await?,
         NotesClient::connect(data_url.clone()).await?,
         TagsClient::connect(data_url.clone()).await?,
-        FilesClient::connect(data_url).await?,
+        FilesClient::connect(data_url.clone()).await?,
+        ShelvesClient::connect(data_url).await?,
     ))
 }
 
@@ -41,12 +44,14 @@ pub fn get_router(state: &AppState) -> anyhow::Result<Router> {
     let notes_router = notes::get_router(state);
     let tags_router = tags::get_router(state);
     let files_router = files::get_router(state);
+    let shelves_router = shelves::get_router(state);
 
     Ok(
         Router::new()
             .merge(notes_router)
             .merge(tags_router)
             .merge(files_router)
+            .merge(shelves_router)
             .route_layer(middleware::from_fn_with_state(state.clone(), auth_mw))
             .merge(auth_router)
             .layer(cors)

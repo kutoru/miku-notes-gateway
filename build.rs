@@ -15,12 +15,15 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .field_attribute("tags.CreateTagReq.user_id", "#[serde(default)]")
         .field_attribute("tags.UpdateTagReq.id", "#[serde(default)]")
         .field_attribute("tags.UpdateTagReq.user_id", "#[serde(default)]")
+        .field_attribute("shelves.UpdateShelfReq.user_id", "#[serde(default)]")
+        .field_attribute("shelves.ConvertToNoteReq.user_id", "#[serde(default)]")
         .compile(
             &[
                 "./proto/sso.proto",
                 "./proto/notes.proto",
                 "./proto/tags.proto",
                 "./proto/files.proto",
+                "./proto/shelves.proto",
             ],
             &["./proto"],
         )?;

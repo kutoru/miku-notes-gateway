@@ -14,3 +14,7 @@ pub mod tags {
 pub mod notes {
     tonic::include_proto!("notes");
 }
+
+pub mod shelves {
+    tonic::include_proto!("shelves");
+}

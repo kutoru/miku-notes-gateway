@@ -6,6 +6,7 @@ use serde::Serialize;
 use tempfile::NamedTempFile;
 use tonic::transport::Channel;
 
+use crate::proto::shelves::shelves_client::ShelvesClient;
 use crate::proto::{notes::notes_client::NotesClient, tags::tags_client::TagsClient, files::files_client::FilesClient, auth::auth_client::AuthClient};
 use crate::error::ResError;
 
@@ -31,6 +32,7 @@ pub struct AppState {
     pub notes_client: NotesClient<Channel>,
     pub tags_client: TagsClient<Channel>,
     pub files_client: FilesClient<Channel>,
+    pub shelves_client: ShelvesClient<Channel>,
 }
 
 #[derive(Debug, Serialize, Clone)]

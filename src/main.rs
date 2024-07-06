@@ -31,6 +31,7 @@ async fn main() -> anyhow::Result<()> {
         notes_client: rpc_clients.1,
         tags_client: rpc_clients.2,
         files_client: rpc_clients.3,
+        shelves_client: rpc_clients.4,
     };
 
     let app = routes::get_router(&state)?;
