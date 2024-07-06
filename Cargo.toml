@@ -15,10 +15,7 @@ axum = { version = "0.7.5", features = ["multipart", "macros"] }
 axum-extra = { version = "0.9", features = ["cookie", "typed-header"] }
 serde = { version = "1", features = ["derive"] }
 time = "0.3.36"
-axum_typed_multipart = "0.11"
-tempfile = "3.10"
 async-stream = "0.3"
-tokio-stream = { version = "0.1.15" }
 futures-util = "0.3.30"
 mime_guess = "2.0.5"
 

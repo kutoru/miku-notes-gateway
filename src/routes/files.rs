@@ -1,17 +1,17 @@
 use crate::proto::files::create_file_metadata::AttachId;
 use crate::proto::files::{CreateFileMetadata, CreateFileReq, DeleteFileReq, DownloadFileReq, Empty, File, FileData};
 use crate::types::{call_grpc_service, new_ok_res};
-use crate::{types::{AppState, ServerResult, MultipartRequest}, error::ResError};
+use crate::{types::{AppState, ServerResult}, error::ResError};
 
+use std::cmp::min;
 use axum::body::Body;
+use axum::extract::{multipart, Multipart};
 use axum::http::header;
 use axum::response::IntoResponse;
 use axum::routing::delete;
 use axum::{Router, routing::{post, get}, extract::{DefaultBodyLimit, State, Path}, Extension, http::StatusCode};
-use tokio_stream::StreamExt;
+use futures_util::StreamExt;
 use tower_http::limit::RequestBodyLimitLayer;
-use axum_typed_multipart::TypedMultipart;
-use tokio::io::AsyncReadExt;
 
 pub fn get_router(state: &AppState) -> Router {
     Router::new()
@@ -25,53 +25,140 @@ pub fn get_router(state: &AppState) -> Router {
         .with_state(state.clone())
 }
 
-// impl to convert tonic stream directly into axum body (files_dl_get)
+// impl to convert tonic stream directly into axum body (for files_dl_get)
 impl From<FileData> for axum::body::Bytes {
     fn from(value: FileData) -> Self {
         value.data.into()
     }
 }
 
-async fn files_post(
-    State(mut state): State<AppState>,
-    Extension(user_id): Extension<i32>,
-    TypedMultipart(body): TypedMultipart<MultipartRequest>,
-) -> ServerResult<File> {
+#[derive(Debug)]
+struct MultipartBody<'a> {
+    attach_id: AttachId,
+    file_size: usize,
+    file: multipart::Field<'a>,
+}
 
-    // preparing basic file info
+async fn parse_multipart(multipart: &mut Multipart) -> Result<MultipartBody<'_>, ResError> {
 
-    let name = body.file.metadata.file_name.unwrap_or("".into());
-    let attach_id = match (body.note_id, body.shelf_id) {
-        (Some(n), None) => AttachId::NoteId(n),
-        (None, Some(s)) => AttachId::ShelfId(s),
+    let attach_id = match multipart.next_field().await? {
+        Some(f) if f.name() == Some("note_id") => AttachId::NoteId(f.text().await?.parse()?),
+        Some(f) if f.name() == Some("shelf_id") => AttachId::ShelfId(f.text().await?.parse()?),
         _ => return Err(ResError::InvalidFields("invalid fields".into())),
     };
 
-    println!("files_post with user_id, attach_id, name: {}, {:?}, {}", user_id, attach_id, name);
+    let file_size = match multipart.next_field().await? {
+        Some(f) if f.name() == Some("file_size") => f.text().await?.parse()?,
+        _ => return Err(ResError::InvalidFields("invalid fields".into())),
+    };
 
-    // preparing the file and size info
+    let file = match multipart.next_field().await? {
+        Some(f) if f.name() == Some("file") => f,
+        _ => return Err(ResError::InvalidFields("invalid fields".into())),
+    };
 
-    let mut file = tokio::fs::File::from_std(body.file.contents.into_file());
+    Ok(MultipartBody { attach_id, file_size, file })
+}
 
-    let file_size = file.metadata().await.unwrap().len();
-    let chunk_size = (1024 * 1024 * state.file_chunk_size) as u64;
-    let expected_parts = (file_size / chunk_size) as i32 + (file_size % chunk_size > 0) as i32;
-    let last_part_len = (file_size % chunk_size) as usize;
+async fn files_post(
+    State(mut state): State<AppState>,
+    Extension(user_id): Extension<i32>,
+    mut multipart: Multipart,
+) -> ServerResult<File> {
 
-    file.set_max_buf_size(chunk_size as usize);
-    let mut buffer = vec![0; chunk_size as usize];
-    
-    println!("size, chunk, parts: {}, {}, {}", file_size, chunk_size, expected_parts);
+    let chunk_size = 1024 * 1024 * state.file_chunk_size;
 
-    // defining a stream that yields CreateFileReq objects with file data
+    // defining a stream that yields CreateFileReq objects with file data.
+    // the setup logic is located in the stream as well,
+    // and that's because grpc call requires multipart to live as long as the stream
 
     let file_stream = async_stream::stream! {
-        println!("stream start");
-        for i in 1..=expected_parts {
-            match file.read(&mut buffer).await {
-                Ok(len) => if len == 0 { println!("FILE READ LEN == 0"); break; },
-                Err(e) => { println!("FILE READ ERR: {:#?}", e); break; },
+
+        // extracting basic file info
+
+        let MultipartBody { attach_id, file_size, mut file } = parse_multipart(&mut multipart).await.unwrap();
+
+        // preparing file and size info
+
+        let name = file.file_name().map(String::from).unwrap_or_default();
+        let expected_parts = (file_size / chunk_size) as i32 + (file_size % chunk_size > 0) as i32;
+
+        println!("name, size, chunk_size, expected_parts: {}, {}, {}, {}", name, file_size, chunk_size, expected_parts);
+
+        let mut i = 1;
+        let mut chunks: Vec<Vec<u8>> = Vec::new();
+
+        while let Some(Ok(chunk)) = file.next().await {
+            let first_chunk_size = chunks.first().map(|v| v.len()).unwrap_or_default();
+            if i == expected_parts && first_chunk_size == chunk_size {
+                break;
             }
+
+            // parsing file chunks and building/dividing them into even parts
+
+            if chunks.is_empty() {
+
+                if chunk.len() < chunk_size {
+                    chunks.push(chunk.to_vec());
+                    continue;
+                } else {
+                    let mut j = 0;
+
+                    while chunk_size * j < chunk.len() {
+                        let curr_range = chunk_size * j..min(chunk_size * (j + 1), chunk.len());
+                        let new_chunk = chunk.slice(curr_range);
+                        chunks.push(new_chunk.to_vec());
+                        j += 1;
+                    }
+                }
+            }
+
+            if chunks.len() == 1 && chunks[0].len() < chunk_size {
+                let offset = chunk_size - chunks[0].len();
+
+                if chunk.len() < offset {
+                    chunks[0].append(&mut chunk.to_vec());
+                    continue;
+                } else {
+                    chunks[0].append(&mut chunk.slice(0..offset).to_vec());
+                    let mut j = 0;
+
+                    while offset + chunk_size * j < chunk.len() {
+                        let curr_range = offset + chunk_size * j..min(offset + chunk_size * (j + 1), chunk.len());
+                        let new_chunk = chunk.slice(curr_range);
+                        chunks.push(new_chunk.to_vec());
+                        j += 1;
+                    }
+                }
+            }
+
+            // if there is a valid chunk, yielding it
+
+            let mut first_chunk_size = chunks.first().map(Vec::len).unwrap_or_default();
+            while first_chunk_size == chunk_size && i < expected_parts {
+                let data = chunks.remove(0);
+                first_chunk_size = chunks.first().map(Vec::len).unwrap_or_default();
+
+                let metadata = match i == 1 {
+                    true => Some(CreateFileMetadata {
+                        user_id: user_id,
+                        attach_id: Some(attach_id),
+                        name: name.clone(),
+                        expected_parts: expected_parts,
+                    }),
+                    false => None,
+                };
+
+                println!("buf {}: {}", i, data.len());
+
+                yield CreateFileReq { metadata, data };
+                i += 1;
+            }
+        }
+
+        // sending the last chunk
+
+        if chunks.first().is_some() {
 
             let metadata = match i == 1 {
                 true => Some(CreateFileMetadata {
@@ -83,10 +170,7 @@ async fn files_post(
                 false => None,
             };
 
-            let data = match i == expected_parts {
-                true => buffer[0..last_part_len].to_vec(),
-                false => buffer.clone(),
-            };
+            let data = chunks.remove(0);
 
             println!("buf {}: {}", i, data.len());
 

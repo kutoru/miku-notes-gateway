@@ -118,3 +118,9 @@ impl From<JsonRejection> for ResError {
         }
     }
 }
+
+impl From<std::num::ParseIntError> for ResError {
+    fn from(_value: std::num::ParseIntError) -> Self {
+        Self::InvalidFields("invalid fields".into())
+    }
+}

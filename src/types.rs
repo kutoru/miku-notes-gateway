@@ -2,10 +2,8 @@ use axum::extract::FromRequest;
 use axum::response::IntoResponse;
 use axum_extra::extract::cookie::{CookieJar, Cookie, SameSite};
 use axum::http::StatusCode;
-use axum_typed_multipart::{TryFromMultipart, FieldData};
 use futures_util::Future;
 use serde::Serialize;
-use tempfile::NamedTempFile;
 use tonic::transport::Channel;
 
 use crate::proto::shelves::shelves_client::ShelvesClient;
@@ -42,16 +40,6 @@ pub struct ResultBody<T> {
     pub success: bool,
     pub error: Option<String>,
     pub data: Option<T>,
-}
-
-#[derive(Debug, TryFromMultipart)]
-// #[try_from_multipart(rename_all = "camelCase")]
-pub struct MultipartRequest {
-    // unlimited is supposed to follow the request body limit
-    #[form_data(limit = "unlimited")]
-    pub file: FieldData<NamedTempFile>,
-    pub note_id: Option<i32>,
-    pub shelf_id: Option<i32>,
 }
 
 /// custom `Json` type used to handle json errors manually (more specifically, convert them to `ResError`)
