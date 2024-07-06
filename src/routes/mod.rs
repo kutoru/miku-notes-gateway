@@ -8,17 +8,19 @@ use crate::{error::ResError, proto::auth::ValidateAtRequest, types::AppState};
 
 mod auth;
 mod notes;
+mod tags;
 mod files;
 
 pub async fn get_rpc_clients(auth_url: String, data_url: String) -> anyhow::Result<(
     AuthClient<Channel>,
     NotesClient<Channel>,
-    // TagsClient<Channel>,
+    TagsClient<Channel>,
     FilesClient<Channel>,
 )> {
     Ok((
         AuthClient::connect(auth_url).await?,
         NotesClient::connect(data_url.clone()).await?,
+        TagsClient::connect(data_url.clone()).await?,
         FilesClient::connect(data_url).await?,
     ))
 }
@@ -37,19 +39,16 @@ pub fn get_router(state: &AppState) -> anyhow::Result<Router> {
 
     let auth_router = auth::get_router(state);
     let notes_router = notes::get_router(state);
+    let tags_router = tags::get_router(state);
     let files_router = files::get_router(state);
 
     Ok(
         Router::new()
-            .merge(
-                auth_router
-            )
-            .merge(
-                notes_router.route_layer(middleware::from_fn_with_state(state.clone(), auth_mw))
-            )
-            .merge(
-                files_router.route_layer(middleware::from_fn_with_state(state.clone(), auth_mw))
-            )
+            .merge(notes_router)
+            .merge(tags_router)
+            .merge(files_router)
+            .route_layer(middleware::from_fn_with_state(state.clone(), auth_mw))
+            .merge(auth_router)
             .layer(cors)
             .route_layer(middleware::from_fn(log_mw))
     )

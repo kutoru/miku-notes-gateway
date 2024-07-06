@@ -29,7 +29,7 @@ pub struct AppState {
 
     pub auth_client: AuthClient<Channel>,
     pub notes_client: NotesClient<Channel>,
-    // pub tags_client: TagsClient<Channel>,
+    pub tags_client: TagsClient<Channel>,
     pub files_client: FilesClient<Channel>,
 }
 
