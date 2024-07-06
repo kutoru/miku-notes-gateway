@@ -1,6 +1,6 @@
-use axum::{extract::State, http::StatusCode, routing::{get, post}, Extension, Json, Router};
+use axum::{extract::State, http::StatusCode, routing::{get, post}, Extension, Router};
 
-use crate::{proto::shelves::{ClearShelfReq, ConvertToNoteReq, ReadShelfReq, Shelf, UpdateShelfReq}, types::{call_grpc_service, new_ok_res, AppState, ServerResult}};
+use crate::{proto::shelves::{ClearShelfReq, ConvertToNoteReq, ReadShelfReq, Shelf, UpdateShelfReq}, types::{call_grpc_service, new_ok_res, AppState, Json, ServerResult}};
 
 pub fn get_router(state: &AppState) -> Router {
     Router::new()

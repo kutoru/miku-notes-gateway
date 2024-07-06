@@ -1,4 +1,4 @@
-use axum::{response::{IntoResponse, Response}, http::{StatusCode, header::InvalidHeaderValue}};
+use axum::{extract::rejection::JsonRejection, http::{header::InvalidHeaderValue, StatusCode}, response::{IntoResponse, Response}};
 use crate::types::new_err_res;
 
 // about 4xx status codes
@@ -8,6 +8,7 @@ use crate::types::new_err_res;
 pub enum ResError {
     InvalidFields(String),  // when one or more fields are missing
     InvalidValues(String),  // when the fields are present but the value types are invalid
+    InvalidContentType(String),
     NotFound(String),  // when getting, patching or deleting something that doesn't exist
     Unauthorized(String),  // when the request is lacking credentials
     Forbidden(String),  // when the request is authenticated but not allowed to access a resource
@@ -32,6 +33,7 @@ impl IntoResponse for ResError {
         match self {
             Self::InvalidFields(msg) => new_err_res(StatusCode::BAD_REQUEST, msg),
             Self::InvalidValues(msg) => new_err_res(StatusCode::UNPROCESSABLE_ENTITY, msg),
+            Self::InvalidContentType(msg) => new_err_res(StatusCode::UNSUPPORTED_MEDIA_TYPE, msg),
             Self::NotFound(msg) => new_err_res(StatusCode::NOT_FOUND, msg),
             Self::Unauthorized(msg) => new_err_res(StatusCode::UNAUTHORIZED, msg),
             Self::Forbidden(msg) => new_err_res(StatusCode::FORBIDDEN, msg),
@@ -102,6 +104,17 @@ impl From<tonic::Status> for ResError {
             },
 
             _ => Self::ServerError(msg),
+        }
+    }
+}
+
+impl From<JsonRejection> for ResError {
+    fn from(value: JsonRejection) -> Self {
+        match value {
+            JsonRejection::MissingJsonContentType(_) => Self::InvalidContentType("invalid content type".into()),
+            JsonRejection::JsonDataError(_) => Self::InvalidValues("invalid field".into()),
+            JsonRejection::BytesRejection(_) => Self::BadRequest("bytes rejection".into()),
+            _ => Self::BadRequest("invalid body".into()),
         }
     }
 }

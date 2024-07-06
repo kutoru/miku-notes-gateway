@@ -1,9 +1,9 @@
 use crate::proto::notes::{AttachTagReq, CreateNoteReq, DeleteNoteReq, DetachTagReq, Empty, Note, NoteList, UpdateNoteReq};
-use crate::types::{call_grpc_service, new_ok_res, AppState, ServerResult};
+use crate::types::{call_grpc_service, new_ok_res, AppState, Json, ServerResult};
 
 use axum::extract::Query;
 use axum::routing::{delete, post};
-use axum::{Router, routing::{patch, get}, extract::{State, Path}, Json, http::StatusCode, Extension};
+use axum::{Router, routing::{patch, get}, extract::{State, Path}, http::StatusCode, Extension};
 
 use helpers::{parse_note_query, NoteQuery};
 mod helpers;

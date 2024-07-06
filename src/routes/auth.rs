@@ -1,7 +1,7 @@
-use crate::{error::ResError, proto::auth::{GetAtRequest, LoginRequest, LogoutRequest, RegisterRequest}, types::{call_grpc_service, new_cookie_ok_res}};
+use crate::{error::ResError, proto::auth::{GetAtRequest, LoginRequest, LogoutRequest, RegisterRequest}, types::{call_grpc_service, new_cookie_ok_res, Json}};
 use crate::types::{CookieResult, AppState, CreateAndAddCookie};
 
-use axum::{extract::State, routing::{get, post}, Json, Router};
+use axum::{extract::State, routing::{get, post}, Router};
 use axum_extra::extract::cookie::CookieJar;
 
 pub fn get_router(state: &AppState) -> Router {

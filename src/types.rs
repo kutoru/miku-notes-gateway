@@ -1,5 +1,7 @@
+use axum::extract::FromRequest;
+use axum::response::IntoResponse;
 use axum_extra::extract::cookie::{CookieJar, Cookie, SameSite};
-use axum::{Json, http::StatusCode};
+use axum::http::StatusCode;
 use axum_typed_multipart::{TryFromMultipart, FieldData};
 use futures_util::Future;
 use serde::Serialize;
@@ -50,6 +52,18 @@ pub struct MultipartRequest {
     pub file: FieldData<NamedTempFile>,
     pub note_id: Option<i32>,
     pub shelf_id: Option<i32>,
+}
+
+/// custom `Json` type used to handle json errors manually (more specifically, convert them to `ResError`)
+#[derive(FromRequest)]
+#[from_request(via(axum::Json), rejection(ResError))]
+pub struct Json<T>(pub T);
+
+impl<T: Serialize> IntoResponse for Json<T> {
+    fn into_response(self) -> axum::response::Response {
+        let Self(value) = self;
+        axum::Json(value).into_response()
+    }
 }
 
 pub async fn call_grpc_service<ReqBody, ReqFn, ResBody, ResFuture>(
