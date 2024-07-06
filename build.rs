@@ -10,6 +10,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .field_attribute("notes.CreateNoteReq.user_id", "#[serde(default)]")
         .field_attribute("notes.UpdateNoteReq.id", "#[serde(default)]")
         .field_attribute("notes.UpdateNoteReq.user_id", "#[serde(default)]")
+        .field_attribute("notes.AttachTagReq.user_id", "#[serde(default)]")
+        .field_attribute("notes.AttachTagReq.note_id", "#[serde(default)]")
         .compile(
             &[
                 "./proto/sso.proto",
