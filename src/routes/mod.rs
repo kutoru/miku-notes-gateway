@@ -12,7 +12,7 @@ mod tags;
 mod files;
 mod shelves;
 
-pub async fn get_rpc_clients(auth_url: String, data_url: String) -> anyhow::Result<(
+pub async fn get_rpc_clients(auth_url: String, data_url: String, max_chunk_size: usize) -> anyhow::Result<(
     AuthClient<Channel>,
     NotesClient<Channel>,
     TagsClient<Channel>,
@@ -23,7 +23,8 @@ pub async fn get_rpc_clients(auth_url: String, data_url: String) -> anyhow::Resu
         AuthClient::connect(auth_url).await?,
         NotesClient::connect(data_url.clone()).await?,
         TagsClient::connect(data_url.clone()).await?,
-        FilesClient::connect(data_url.clone()).await?,
+        FilesClient::connect(data_url.clone()).await?
+            .max_decoding_message_size(1024 * 1024 * (max_chunk_size + 1)),
         ShelvesClient::connect(data_url).await?,
     ))
 }
