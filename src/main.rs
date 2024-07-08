@@ -16,6 +16,7 @@ async fn main() -> anyhow::Result<()> {
     ).await?;
 
     let state = AppState {
+        log_level: dotenvy::var("LOG_LEVEL")?.parse()?,
         service_addr: dotenvy::var("SERVICE_ADDR")?,
         frontend_url: dotenvy::var("FRONTEND_URL")?,
         req_body_limit: dotenvy::var("MAX_REQUEST_BODY_SIZE")?.parse()?,
@@ -39,7 +40,7 @@ async fn main() -> anyhow::Result<()> {
     let app = routes::get_router(&state)?;
     let listener = tokio::net::TcpListener::bind(&state.service_addr).await?;
 
-    println!("Listening on {}", state.service_addr);
+    println!("Listening on {}\n", state.service_addr);
     axum::serve(listener, app).await?;
 
     Ok(())

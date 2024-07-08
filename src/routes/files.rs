@@ -4,6 +4,7 @@ use crate::types::{call_grpc_service, new_ok_res};
 use crate::{types::{AppState, ServerResult}, error::ResError};
 
 use std::cmp::min;
+use std::fmt::Debug;
 use axum::body::Body;
 use axum::extract::{multipart, Multipart};
 use axum::http::header;
@@ -12,6 +13,7 @@ use axum::routing::delete;
 use axum::{Router, routing::{post, get}, extract::{DefaultBodyLimit, State, Path}, Extension, http::StatusCode};
 use futures_util::StreamExt;
 use tower_http::limit::RequestBodyLimitLayer;
+use tracing::debug;
 
 pub fn get_router(state: &AppState) -> Router {
     Router::new()
@@ -43,17 +45,18 @@ async fn parse_multipart(multipart: &mut Multipart) -> Result<MultipartBody<'_>,
     let attach_id = match multipart.next_field().await? {
         Some(f) if f.name() == Some("note_id") => AttachId::NoteId(f.text().await?.parse()?),
         Some(f) if f.name() == Some("shelf_id") => AttachId::ShelfId(f.text().await?.parse()?),
-        _ => return Err(ResError::InvalidFields("invalid fields".into())),
+        _ => return Err(ResError::InvalidFields("Could not get either a note_id nor shelf_id from the multipart body".into())),
     };
 
     let file = match multipart.next_field().await? {
         Some(f) if f.name() == Some("file") => f,
-        _ => return Err(ResError::InvalidFields("invalid fields".into())),
+        _ => return Err(ResError::InvalidFields("Could not get the file from the multipart body".into())),
     };
 
     Ok(MultipartBody { attach_id, file })
 }
 
+#[tracing::instrument(fields(attach_id, file_name), skip(state, multipart), err(level = tracing::Level::DEBUG))]
 async fn files_post(
     State(mut state): State<AppState>,
     Extension(user_id): Extension<i32>,
@@ -61,6 +64,7 @@ async fn files_post(
 ) -> ServerResult<File> {
 
     let chunk_size = 1024 * 1024 * state.file_chunk_size;
+    let span = tracing::Span::current();
 
     // defining a stream that yields CreateFileReq objects with file data.
     // the setup logic is located in the stream as well,
@@ -70,13 +74,15 @@ async fn files_post(
 
         // extracting basic file info
 
-        let Ok(MultipartBody { attach_id, mut file }) = parse_multipart(&mut multipart).await else {
-            return println!("multipart parse error");
+        let MultipartBody { attach_id, mut file } = match parse_multipart(&mut multipart).await {
+            Ok(b) => b,
+            Err(e) => return debug!(parent: &span, "{e}"),
         };
 
         let name = file.file_name().map(String::from).unwrap_or_default();
 
-        println!("user_id, name, attach_id, chunk_size: {}, {}, {:?}, {}", user_id, name, attach_id, chunk_size);
+        span.record("attach_id", format!("{attach_id:?}"));
+        span.record("file_name", name.clone());
 
         // sending the first part containing only the metadata
 
@@ -109,7 +115,7 @@ async fn files_post(
 
                 i += 1;
                 if i < 10 || (i < 100 && i % 10 == 0) || (i < 1000 && i % 100 == 0) || i % 1000 == 0 {
-                    println!("chunk {}: {}", i, data.len());
+                    debug!(parent: &span, "chunk {}: {}", i, data.len());
                 }
 
                 yield CreateFileReq { metadata: None, data };
@@ -128,13 +134,12 @@ async fn files_post(
     new_ok_res(StatusCode::CREATED, new_file)
 }
 
+#[tracing::instrument(skip(state), err(level = tracing::Level::DEBUG))]
 async fn files_dl_get(
     State(mut state): State<AppState>,
     Path(file_hash): Path<String>,
     Extension(user_id): Extension<i32>,
 ) -> impl IntoResponse {
-
-    println!("files_dl_get with file_hash and user_id: {}, {}", file_hash, user_id);
 
     let mut stream = call_grpc_service(
         DownloadFileReq { user_id, file_hash },
@@ -143,13 +148,13 @@ async fn files_dl_get(
     ).await?;
 
     let first_part = stream.next().await
-        .ok_or(ResError::ServerError("server error".into()))??;
+        .ok_or(ResError::ServerError("Could not get the first message from a file stream".into()))??;
 
     let Some(DownloadFileMetadata {
         name: file_name,
         size: file_size,
     }) = first_part.metadata else {
-        return Err(ResError::ServerError("server error".into()));
+        return Err(ResError::ServerError("Could not get metadata from the first message in a file stream".into()));
     };
 
     let body = Body::from_stream(stream);
@@ -170,13 +175,12 @@ async fn files_dl_get(
     }
 }
 
+#[tracing::instrument(skip(state), err(level = tracing::Level::DEBUG))]
 async fn files_delete(
     State(mut state): State<AppState>,
     Path(file_id): Path<i32>,
     Extension(user_id): Extension<i32>,
 ) -> ServerResult<Empty> {
-
-    println!("files_delete with file_id and user_id: {}, {}", file_id, user_id);
 
     let res_body = call_grpc_service(
         DeleteFileReq { id: file_id, user_id: user_id },

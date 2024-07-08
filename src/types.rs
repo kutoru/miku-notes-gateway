@@ -5,6 +5,7 @@ use axum::http::StatusCode;
 use futures_util::Future;
 use serde::Serialize;
 use tonic::transport::Channel;
+use tracing::{debug, error};
 
 use crate::proto::shelves::shelves_client::ShelvesClient;
 use crate::proto::{notes::notes_client::NotesClient, tags::tags_client::TagsClient, files::files_client::FilesClient, auth::auth_client::AuthClient};
@@ -13,8 +14,9 @@ use crate::error::ResError;
 pub type ServerResult<T> = Result<(StatusCode, Json<ResultBody<T>>), ResError>;
 pub type CookieResult = Result<(StatusCode, CookieJar, Json<ResultBody<()>>), ResError>;
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct AppState {
+    pub log_level: tracing::Level,
     pub service_addr: String,
     pub frontend_url: String,
     pub req_body_limit: usize,
@@ -43,7 +45,7 @@ pub struct ResultBody<T> {
 }
 
 /// custom `Json` type used to handle json errors manually (more specifically, convert them to `ResError`)
-#[derive(FromRequest)]
+#[derive(Debug, FromRequest)]
 #[from_request(via(axum::Json), rejection(ResError))]
 pub struct Json<T>(pub T);
 
@@ -54,6 +56,7 @@ impl<T: Serialize> IntoResponse for Json<T> {
     }
 }
 
+/// Generically calls a grpc service
 pub async fn call_grpc_service<ReqBody, ReqFn, ResBody, ResFuture>(
     body: ReqBody,
     req_fn: ReqFn,
@@ -74,6 +77,7 @@ pub trait CreateAndAddCookie {
     fn add_new_cookie(self, _: String,  _: String, _: i64) -> Self;
 }
 impl CreateAndAddCookie for CookieJar {
+    /// Creates a new cookie based on the arguments and adds it to the jar
     fn add_new_cookie(self, cookie_key: String, token: String, token_exp: i64) -> Self {
         let exp_time = time::Duration::seconds(token_exp);
 
@@ -103,6 +107,16 @@ pub fn new_cookie_ok_res(jar: CookieJar) -> CookieResult {
     ))
 }
 
-pub fn new_err_res(code: StatusCode, msg: String) -> (StatusCode, Json<ResultBody<()>>) {
-    (code, Json(ResultBody { success: false, error: Some(msg), data: None }))
+/// Converts the arguments into a tuple that implements IntoResponse. It also logs the error messages that it receives
+pub fn new_err_res(status_code: StatusCode, response_msg: &str, internal_msg: String) -> (StatusCode, Json<ResultBody<()>>) {
+    let code = status_code.as_u16();
+    let status = status_code.canonical_reason();
+
+    if code >= 500 {
+        error!(code, status, response_msg, internal_msg);
+    } else {
+        debug!(code, status, response_msg, internal_msg);
+    }
+
+    (status_code, Json(ResultBody { success: false, error: Some(response_msg.into()), data: None }))
 }

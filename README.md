@@ -29,6 +29,7 @@ After that you can do the usual `cargo run` in the root directory
 
 The .env file should be located in the root directory and have the following contents:
 ```
+LOG_LEVEL=info
 SERVICE_ADDR=127.0.0.1:33033
 FRONTEND_URL=http://localhost:5173
 MAX_REQUEST_BODY_SIZE=4096
@@ -45,6 +46,7 @@ ACCESS_TOKEN_EXP=30
 REFRESH_TOKEN_EXP=120
 ```
 Where:
+- `LOG_LEVEL` is the log level for the service. Can be either `debug`, `info` or `error`
 - `SERVICE_ADDR` is the address that this service will run on
 - `FRONTEND_URL` is the url that the **Frontend** is running on. Required for CORS stuff
 - `MAX_REQUEST_BODY_SIZE` is an unsigned int that will become the maximum allowed size (in megabytes) for received multipart request bodies. Files received from multipart bodies never get loaded into memory, so big numbers (up to like 50GB) should in theory be fine as a value for this field, although big files like that will take a long time to get uploaded

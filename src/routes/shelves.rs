@@ -9,12 +9,11 @@ pub fn get_router(state: &AppState) -> Router {
         .with_state(state.clone())
 }
 
+#[tracing::instrument(skip(state), err(level = tracing::Level::DEBUG))]
 async fn shelf_get(
     State(mut state): State<AppState>,
     Extension(user_id): Extension<i32>,
 ) -> ServerResult<Shelf> {
-
-    println!("shelf_get with user_id: {}", user_id);
 
     let shelf = call_grpc_service(
         ReadShelfReq { user_id },
@@ -25,13 +24,12 @@ async fn shelf_get(
     new_ok_res(StatusCode::OK, shelf)
 }
 
+#[tracing::instrument(skip(state), err(level = tracing::Level::DEBUG))]
 async fn shelf_patch(
     State(mut state): State<AppState>,
     Extension(user_id): Extension<i32>,
     Json(mut body): Json<UpdateShelfReq>,
 ) -> ServerResult<Shelf> {
-
-    println!("shelf_patch with user_id, body: {}, {:?}", user_id, body);
 
     body.user_id = user_id;
 
@@ -44,12 +42,11 @@ async fn shelf_patch(
     new_ok_res(StatusCode::OK, shelf)
 }
 
+#[tracing::instrument(skip(state), err(level = tracing::Level::DEBUG))]
 async fn shelf_delete(
     State(mut state): State<AppState>,
     Extension(user_id): Extension<i32>,
 ) -> ServerResult<Shelf> {
-
-    println!("shelf_delete with user_id: {}", user_id);
 
     let shelf = call_grpc_service(
         ClearShelfReq { user_id },
@@ -60,13 +57,12 @@ async fn shelf_delete(
     new_ok_res(StatusCode::OK, shelf)
 }
 
+#[tracing::instrument(skip(state), err(level = tracing::Level::DEBUG))]
 async fn shelf_to_note_post(
     State(mut state): State<AppState>,
     Extension(user_id): Extension<i32>,
     Json(mut body): Json<ConvertToNoteReq>,
 ) -> ServerResult<Shelf> {
-
-    println!("shelf_to_note_post with user_id & body: {}, {:?}", user_id, body);
 
     body.user_id = user_id;
 

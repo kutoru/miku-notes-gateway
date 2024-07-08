@@ -13,6 +13,7 @@ pub fn get_router(state: &AppState) -> Router {
         .with_state(state.clone())
 }
 
+#[tracing::instrument(skip(state), err(level = tracing::Level::DEBUG))]
 async fn login_post(
     jar: CookieJar,
     State(mut state): State<AppState>,
@@ -41,6 +42,7 @@ async fn login_post(
     )
 }
 
+#[tracing::instrument(skip(state), err(level = tracing::Level::DEBUG))]
 async fn register_post(
     jar: CookieJar,
     State(mut state): State<AppState>,
@@ -63,6 +65,7 @@ async fn register_post(
     )
 }
 
+#[tracing::instrument(skip(state), err(level = tracing::Level::DEBUG))]
 async fn access_get(
     jar: CookieJar,
     State(mut state): State<AppState>,
@@ -71,7 +74,7 @@ async fn access_get(
     let fingerprint = "asdfasdf";
 
     let token = jar.get(&state.refresh_token_key)
-        .ok_or(ResError::Unauthorized("Unauthorized".into()))?
+        .ok_or(ResError::Unauthorized("Could not get a refresh token".into()))?
         .value();
 
     let res_body = call_grpc_service(
@@ -86,6 +89,7 @@ async fn access_get(
     )
 }
 
+#[tracing::instrument(skip(state), err(level = tracing::Level::DEBUG))]
 async fn logout_get(
     jar: CookieJar,
     State(mut state): State<AppState>,
@@ -94,7 +98,7 @@ async fn logout_get(
     let fingerprint = "asdfasdf";
 
     let token = jar.get(&state.access_token_key)
-        .ok_or(ResError::Unauthorized("Unauthorized".into()))?
+        .ok_or(ResError::Unauthorized("Could not get an access token".into()))?
         .value();
 
     call_grpc_service(

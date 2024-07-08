@@ -17,13 +17,12 @@ pub fn get_router(state: &AppState) -> Router {
         .with_state(state.clone())
 }
 
+#[tracing::instrument(skip(state), err(level = tracing::Level::DEBUG))]
 async fn notes_get(
     State(mut state): State<AppState>,
     Extension(user_id): Extension<i32>,
     Query(query): Query<NoteQuery>,
 ) -> ServerResult<NoteList> {
-
-    println!("notes_get with user_id and query: {}, {:?}", user_id, query);
 
     let body = parse_note_query(user_id, query)?;
 
@@ -36,13 +35,12 @@ async fn notes_get(
     new_ok_res(StatusCode::OK, note_list)
 }
 
+#[tracing::instrument(skip(state), err(level = tracing::Level::DEBUG))]
 async fn notes_post(
     State(mut state): State<AppState>,
     Extension(user_id): Extension<i32>,
     Json(mut body): Json<CreateNoteReq>,
 ) -> ServerResult<Note> {
-
-    println!("notes_post with user_id and body: {}, {:#?}", user_id, body);
 
     body.user_id = user_id;
 
@@ -55,14 +53,13 @@ async fn notes_post(
     new_ok_res(StatusCode::OK, new_note)
 }
 
+#[tracing::instrument(skip(state), err(level = tracing::Level::DEBUG))]
 async fn notes_patch(
     State(mut state): State<AppState>,
     Path(note_id): Path<i32>,
     Extension(user_id): Extension<i32>,
     Json(mut body): Json<UpdateNoteReq>,
 ) -> ServerResult<Note> {
-
-    println!("notes_patch with note_id, user_id & body: {}, {}, {:#?}", note_id, user_id, body);
 
     body.id = note_id;
     body.user_id = user_id;
@@ -76,13 +73,12 @@ async fn notes_patch(
     new_ok_res(StatusCode::OK, updated_note)
 }
 
+#[tracing::instrument(skip(state), err(level = tracing::Level::DEBUG))]
 async fn notes_delete(
     State(mut state): State<AppState>,
     Path(note_id): Path<i32>,
     Extension(user_id): Extension<i32>,
 ) -> ServerResult<Empty> {
-
-    println!("notes_delete with note_id & user_id: {}, {}", note_id, user_id);
 
     let res_body = call_grpc_service(
         DeleteNoteReq { id: note_id, user_id },
@@ -93,14 +89,13 @@ async fn notes_delete(
     new_ok_res(StatusCode::OK, res_body)
 }
 
+#[tracing::instrument(skip(state), err(level = tracing::Level::DEBUG))]
 async fn notes_tag_post(
     State(mut state): State<AppState>,
     Path(note_id): Path<i32>,
     Extension(user_id): Extension<i32>,
     Json(mut body): Json<AttachTagReq>,
 ) -> ServerResult<Empty> {
-
-    println!("notes_tag_post with note_id, user_id, body: {}, {}, {:?}", note_id, user_id, body);
 
     body.note_id = note_id;
     body.user_id = user_id;
@@ -114,13 +109,12 @@ async fn notes_tag_post(
     new_ok_res(StatusCode::OK, res_body)
 }
 
+#[tracing::instrument(skip(state), err(level = tracing::Level::DEBUG))]
 async fn notes_tag_delete(
     State(mut state): State<AppState>,
     Path((note_id, tag_id)): Path<(i32, i32)>,
     Extension(user_id): Extension<i32>,
 ) -> ServerResult<Empty> {
-
-    println!("notes_tag_delete with note_id, tag_id, user_id: {}, {}, {}", note_id, tag_id, user_id);
 
     let res_body = call_grpc_service(
         DetachTagReq { user_id, note_id, tag_id },

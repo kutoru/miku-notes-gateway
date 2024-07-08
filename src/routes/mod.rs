@@ -1,7 +1,10 @@
 use axum::{extract::State, http::{header, Method}, middleware::{self, Next}, response::Response, Router};
 use axum_extra::extract::CookieJar;
+use rand::{thread_rng, Rng};
 use tonic::transport::Channel;
-use tower_http::cors::CorsLayer;
+use tower_http::{cors::CorsLayer, trace::TraceLayer};
+use tracing::{info, info_span};
+use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 use crate::{proto::{auth::auth_client::AuthClient, files::files_client::FilesClient, notes::notes_client::NotesClient, shelves::shelves_client::ShelvesClient, tags::tags_client::TagsClient}, types::call_grpc_service};
 use crate::{error::ResError, proto::auth::ValidateAtRequest, types::AppState};
@@ -47,34 +50,43 @@ pub fn get_router(state: &AppState) -> anyhow::Result<Router> {
     let files_router = files::get_router(state);
     let shelves_router = shelves::get_router(state);
 
+    setup_tracing(&state.log_level);
+
     Ok(
         Router::new()
             .merge(notes_router)
             .merge(tags_router)
             .merge(files_router)
             .merge(shelves_router)
-            .route_layer(middleware::from_fn_with_state(state.clone(), auth_mw))
+            .route_layer(middleware::from_fn_with_state(state.clone(), auth_middleware))
             .merge(auth_router)
             .layer(cors)
-            .route_layer(middleware::from_fn(log_mw))
+            .layer(
+                TraceLayer::new_for_http()
+                    .make_span_with(|request: &axum::extract::Request<_>| {
+                        info_span!(
+                            "request",
+                            req_id = thread_rng().gen_range(10000..100000),
+                            method = ?request.method(),
+                            uri = ?request.uri(),
+                        )
+                    })
+                    .on_response(|response: &Response, _, _: &_| {
+                        info!(response_code = response.status().as_u16());
+                    })
+            )
     )
 }
 
-async fn auth_mw(
+async fn auth_middleware(
     jar: CookieJar,
     State(mut state): State<AppState>,
     mut req: axum::extract::Request,
     next: Next,
 ) -> Result<Response, ResError> {
     let token = match jar.get(&state.access_token_key) {
-        Some(c) => {
-            println!("ACCESS TOKEN: {:?}", c.value());
-            c.value()
-        },
-        None => {
-            println!("NO ACCESS TOKEN");
-            return Err(ResError::Unauthorized("Unauthorized".into()));
-        },
+        Some(c) => c.value(),
+        None => return Err(ResError::Unauthorized("Could not get access token from the cookie jar".into())),
     };
 
     let res_body = call_grpc_service(
@@ -87,11 +99,29 @@ async fn auth_mw(
     Ok(next.run(req).await)
 }
 
-async fn log_mw(
-    req: axum::extract::Request,
-    next: Next,
-) -> Response {
-    // let now = chrono::Local::now().format("%Y-%m-%d %H:%M:%S");
-    println!("\nRequest: {} -> {}", req.method(), req.uri());
-    next.run(req).await
+fn setup_tracing(log_level: &tracing::Level) {
+
+    // https://stackoverflow.com/questions/70013172/how-to-use-the-tracing-library
+
+    let format = time::format_description::parse(
+        "[year]-[month padding:zero]-[day padding:zero] [hour]:[minute]:[second]",
+    ).unwrap();
+    let offset = time::UtcOffset::current_local_offset()
+        .unwrap_or(time::UtcOffset::UTC);
+    let timer = tracing_subscriber::fmt::time::OffsetTime::new(offset, format);
+
+    tracing_subscriber::registry()
+        .with(
+            tracing_subscriber::EnvFilter::new::<&str>(
+                &format!("RUST_LOG=error,miku_notes_gateway={log_level}"),
+            )
+        )
+        .with(
+            tracing_subscriber::fmt::layer()
+                .pretty()
+                .with_timer(timer)
+                .with_file(true)
+                // .with_target(false)
+        )
+        .init()
 }

@@ -15,8 +15,8 @@ pub struct NoteQuery {
     title: Option<String>,
 }
 
-fn get_field_err(field_name: &str) -> Result<ReadNotesReq, ResError> {
-    Err(ResError::InvalidFields(format!("invalid query field: {field_name}")))
+fn field_err<T: std::fmt::Display>(object: T) -> Result<ReadNotesReq, ResError> {
+    Err(ResError::InvalidFields(format!("Received invalid query field: {object}")))
 }
 
 /// makes sure that the query fields are ok, and then returns a valid `ReadNotesReq`
@@ -25,7 +25,8 @@ pub fn parse_note_query(user_id: i32, q: NoteQuery) -> Result<ReadNotesReq, ResE
         None => 1,
         Some(p) => match p.parse() {
             Ok(p) if p > 0 => p,
-            _ => return get_field_err("page"),
+            Ok(f) => return field_err(f),
+            Err(e) => return field_err(e),
         },
     };
 
@@ -33,7 +34,8 @@ pub fn parse_note_query(user_id: i32, q: NoteQuery) -> Result<ReadNotesReq, ResE
         None => 20,
         Some(pp) => match pp.parse() {
             Ok(pp) if pp > 0 && pp <= 100 => pp,
-            _ => return get_field_err("per_page"),
+            Ok(f) => return field_err(f),
+            Err(e) => return field_err(e),
         },
     };
 
@@ -43,7 +45,7 @@ pub fn parse_note_query(user_id: i32, q: NoteQuery) -> Result<ReadNotesReq, ResE
             "date" => sort::Field::Date,
             "date_modif" => sort::Field::DateModif,
             "title" => sort::Field::Title,
-            _ => return get_field_err("sort_by"),
+            f => return field_err(f),
         },
     };
 
@@ -52,7 +54,7 @@ pub fn parse_note_query(user_id: i32, q: NoteQuery) -> Result<ReadNotesReq, ResE
         Some(st) => match st.as_str() {
             "asc" => sort::Type::Asc,
             "desc" => sort::Type::Desc,
-            _ => return get_field_err("sort_type"),
+            f => return field_err(f),
         },
     };
 
@@ -69,7 +71,7 @@ pub fn parse_note_query(user_id: i32, q: NoteQuery) -> Result<ReadNotesReq, ResE
                 (true, l) if l <= 100 => Some(filters::Tags {
                     tag_ids: tags,
                 }),
-                _ => return get_field_err("tags"),
+                _ => return field_err(t),
             }
         },
     };
@@ -86,15 +88,15 @@ pub fn parse_note_query(user_id: i32, q: NoteQuery) -> Result<ReadNotesReq, ResE
                     start: dates[0],
                     end: if dates[1] != 0 { dates[1] } else { i64::MAX - 1 },
                 }),
-                _ => return get_field_err("date"),
+                _ => return field_err(d),
             }
         },
     };
 
     let filter_date_modif = match q.date_modif {
         None => None,
-        Some(d) => {
-            let dates: Vec<_> = d.split('-')
+        Some(dm) => {
+            let dates: Vec<_> = dm.split('-')
                 .map(|v| v.parse().unwrap_or(-1))
                 .collect();
 
@@ -103,7 +105,7 @@ pub fn parse_note_query(user_id: i32, q: NoteQuery) -> Result<ReadNotesReq, ResE
                     start: dates[0],
                     end: if dates[1] != 0 { dates[1] } else { i64::MAX - 1 },
                 }),
-                _ => return get_field_err("date_modif"),
+                _ => return field_err(dm),
             }
         },
     };

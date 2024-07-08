@@ -9,12 +9,11 @@ pub fn get_router(state: &AppState) -> Router {
         .with_state(state.clone())
 }
 
+#[tracing::instrument(skip(state), err(level = tracing::Level::DEBUG))]
 async fn tags_get(
     State(mut state): State<AppState>,
     Extension(user_id): Extension<i32>,
 ) -> ServerResult<TagList> {
-
-    println!("tags_get with user_id: {}", user_id);
 
     let tag_list = call_grpc_service(
         ReadTagsReq { user_id },
@@ -25,13 +24,12 @@ async fn tags_get(
     new_ok_res(StatusCode::OK, tag_list)
 }
 
+#[tracing::instrument(skip(state), err(level = tracing::Level::DEBUG))]
 async fn tags_post(
     State(mut state): State<AppState>,
     Extension(user_id): Extension<i32>,
     Json(mut body): Json<CreateTagReq>,
 ) -> ServerResult<Tag> {
-
-    println!("tags_post with user_id & body: {}, {:?}", user_id, body);
 
     body.user_id = user_id;
 
@@ -44,14 +42,13 @@ async fn tags_post(
     new_ok_res(StatusCode::CREATED, new_tag)
 }
 
+#[tracing::instrument(skip(state), err(level = tracing::Level::DEBUG))]
 async fn tags_patch(
     State(mut state): State<AppState>,
     Path(tag_id): Path<i32>,
     Extension(user_id): Extension<i32>,
     Json(mut body): Json<UpdateTagReq>,
 ) -> ServerResult<Tag> {
-
-    println!("tags_patch with user_id, tag_id, body: {}, {}, {:?}", user_id, tag_id, body);
 
     body.id = tag_id;
     body.user_id = user_id;
@@ -65,13 +62,12 @@ async fn tags_patch(
     new_ok_res(StatusCode::OK, updated_tag)
 }
 
+#[tracing::instrument(skip(state), err(level = tracing::Level::DEBUG))]
 async fn tags_delete(
     State(mut state): State<AppState>,
     Path(tag_id): Path<i32>,
     Extension(user_id): Extension<i32>,
 ) -> ServerResult<Empty> {
-
-    println!("tags_delete with user_id, tag_id: {}, {}", user_id, tag_id);
 
     let res_body = call_grpc_service(
         DeleteTagReq { id: tag_id, user_id },
