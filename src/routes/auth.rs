@@ -3,6 +3,7 @@ use crate::types::{CookieResult, AppState, CreateAndAddCookie};
 
 use axum::{extract::State, routing::{get, post}, Router};
 use axum_extra::extract::cookie::CookieJar;
+use utoipa::OpenApi;
 
 pub fn get_router(state: &AppState) -> Router {
     Router::new()
@@ -13,6 +14,27 @@ pub fn get_router(state: &AppState) -> Router {
         .with_state(state.clone())
 }
 
+#[derive(OpenApi)]
+#[openapi(
+    paths(login_post, register_post, access_get, logout_get),
+    components(schemas(LoginRequest, RegisterRequest)),
+)]
+pub struct Api;
+
+/// Log in
+///
+/// Log in as an existing user using credentials
+#[utoipa::path(
+    post, path = "login",
+    responses(
+        (status = 200, description = "Success", headers(("set-cookie", description = "Two cookies that include new access and refresh tokens"))),
+        (status = 400, description = "The client did something wrong. Most likely the body format was incorrect"),
+        (status = 415, description = "Request's content type was incorrect"),
+        (status = 422, description = "There was something wrong with the request's body fields"),
+        (status = "5XX", description = "Some internal server error that isn't the client's fault"),
+    ),
+    security(()),
+)]
 #[tracing::instrument(skip(state), err(level = tracing::Level::DEBUG))]
 async fn login_post(
     jar: CookieJar,
@@ -42,6 +64,20 @@ async fn login_post(
     )
 }
 
+/// Register
+///
+/// Register as a new user using new credentials
+#[utoipa::path(
+    post, path = "register",
+    responses(
+        (status = 200, description = "Success", headers(("set-cookie", description = "Two cookies that include new access and refresh tokens"))),
+        // (status = 400, description = "The client did something wrong. Most likely the body format was incorrect"),
+        (status = 415, description = "Request's content type was incorrect"),
+        (status = 422, description = "There was something wrong with the request's body fields"),
+        (status = "5XX", description = "Some internal server error that isn't the client's fault"),
+    ),
+    security(()),
+)]
 #[tracing::instrument(skip(state), err(level = tracing::Level::DEBUG))]
 async fn register_post(
     jar: CookieJar,
@@ -65,6 +101,18 @@ async fn register_post(
     )
 }
 
+/// Get a new access token
+///
+/// Once an existing access token expires, this route should be called to get a new one. If both access and refresh tokens expire, then the user will have to log in manually
+#[utoipa::path(
+    get, path = "access",
+    responses(
+        (status = 200, description = "Success", headers(("set-cookie", description = "Cookie that includes the new access token"))),
+        (status = 401, description = "The refresh token is either missing or invalid"),
+        (status = "5XX", description = "Some internal server error that isn't the client's fault"),
+    ),
+    security(("refresh_token" = [])),
+)]
 #[tracing::instrument(skip(state), err(level = tracing::Level::DEBUG))]
 async fn access_get(
     jar: CookieJar,
@@ -89,6 +137,16 @@ async fn access_get(
     )
 }
 
+/// Log out
+#[utoipa::path(
+    get, path = "logout",
+    responses(
+        (status = 200, description = "Success", headers(("set-cookie", description = "Two cookies that erase access and refresh tokens"))),
+        (status = 401, description = "The access token is either missing or invalid"),
+        (status = "5XX", description = "Some internal server error that isn't the client's fault"),
+    ),
+    security(("access_token" = [])),
+)]
 #[tracing::instrument(skip(state), err(level = tracing::Level::DEBUG))]
 async fn logout_get(
     jar: CookieJar,

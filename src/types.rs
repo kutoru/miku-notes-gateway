@@ -6,6 +6,7 @@ use futures_util::Future;
 use serde::Serialize;
 use tonic::transport::Channel;
 use tracing::{debug, error};
+use utoipa::ToSchema;
 
 use crate::proto::shelves::shelves_client::ShelvesClient;
 use crate::proto::{notes::notes_client::NotesClient, tags::tags_client::TagsClient, files::files_client::FilesClient, auth::auth_client::AuthClient};
@@ -37,10 +38,11 @@ pub struct AppState {
     pub shelves_client: ShelvesClient<Channel>,
 }
 
-#[derive(Debug, Serialize, Clone)]
+#[derive(Debug, Serialize, Clone, ToSchema)]
 pub struct ResultBody<T> {
     pub success: bool,
     pub error: Option<String>,
+    #[schema(value_type = Option<Object>)]
     pub data: Option<T>,
 }
 

@@ -21,6 +21,9 @@ mime_guess = "2.0.5"
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter", "local-time"] }
 rand = "0.8.5"
+utoipa = { version = "5.0.0-alpha.0", features = ["axum_extras"] }
+utoipa-swagger-ui = { version = "7.1.1-alpha.0", features = ["axum"] }
+utoipa-scalar = { version = "0.2.0-alpha.0", features = ["axum"] }
 
 [build-dependencies]
 tonic-build = "0.11"

@@ -14,17 +14,35 @@ use axum::{Router, routing::{post, get}, extract::{DefaultBodyLimit, State, Path
 use futures_util::StreamExt;
 use tower_http::limit::RequestBodyLimitLayer;
 use tracing::debug;
+use utoipa::{OpenApi, ToSchema};
 
 pub fn get_router(state: &AppState) -> Router {
     Router::new()
-        .route("/files", post(files_post))
+        .route("/", post(files_post))
         .layer(DefaultBodyLimit::disable())
         .layer(RequestBodyLimitLayer::new(
             1024 * 1024 * state.req_body_limit,
         ))
-        .route("/files/:id", delete(files_delete))
-        .route("/files/dl/:hash", get(files_dl_get))
+        .route("/:id", delete(files_delete))
+        .route("/dl/:hash", get(files_dl_get))
         .with_state(state.clone())
+}
+
+#[derive(OpenApi)]
+#[openapi(
+    paths(files_post, files_dl_get, files_delete),
+    components(schemas(ExampleMultipartBody, File, Empty)),
+    security(("access_token" = [])),
+)]
+pub struct Api;
+
+#[derive(ToSchema)]
+#[schema(title = "MultipartBody")]
+#[allow(dead_code)]
+struct ExampleMultipartBody {
+    note_id: Option<i32>,
+    shelf_id: Option<i32>,
+    file: Vec<u8>,
 }
 
 // impl to convert tonic stream directly into axum body (for files_dl_get)
@@ -56,6 +74,20 @@ async fn parse_multipart(multipart: &mut Multipart) -> Result<MultipartBody<'_>,
     Ok(MultipartBody { attach_id, file })
 }
 
+/// Create a new file
+///
+/// Post (upload) a new file and immediately attach it to either a note or a shelf
+#[utoipa::path(
+    post, path = "",
+    request_body(content = ExampleMultipartBody, content_type = "multipart/form-data", description = "Note that despite `note_id` and `shelf_id` are showing as optional, you must always specify exactly one of them"),
+    responses(
+        (status = 201, description = "File has been successfully created", body = File),
+        (status = 400, description = "The client did something wrong. Most likely the body format was incorrect"),
+        (status = 401, description = "The access token is either missing or invalid"),
+        (status = 404, description = "The note or the shelf were not found"),
+        (status = "5XX", description = "Some internal server error that isn't the client's fault"),
+    ),
+)]
 #[tracing::instrument(fields(attach_id, file_name), skip(state, multipart), err(level = tracing::Level::DEBUG))]
 async fn files_post(
     State(mut state): State<AppState>,
@@ -134,6 +166,16 @@ async fn files_post(
     new_ok_res(StatusCode::CREATED, new_file)
 }
 
+/// Download a file
+#[utoipa::path(
+    get, path = "/dl/{file_hash}",
+    responses(
+        (status = 200, description = "File has been successfully sent", body = Vec<u8>, content_type = "*/*"),
+        (status = 401, description = "The access token is either missing or invalid"),
+        (status = 404, description = "The file wasn't found"),
+        (status = "5XX", description = "Some internal server error that isn't the client's fault"),
+    ),
+)]
 #[tracing::instrument(skip(state), err(level = tracing::Level::DEBUG))]
 async fn files_dl_get(
     State(mut state): State<AppState>,
@@ -175,6 +217,17 @@ async fn files_dl_get(
     }
 }
 
+/// Delete a file
+#[utoipa::path(
+    delete, path = "/{file_id}",
+    responses(
+        (status = 200, description = "File has been successfully deleted", body = Empty),
+        (status = 400, description = "The client did something wrong. Most likely the path format was incorrect"),
+        (status = 401, description = "The access token is either missing or invalid"),
+        (status = 404, description = "The file wasn't found"),
+        (status = "5XX", description = "Some internal server error that isn't the client's fault"),
+    ),
+)]
 #[tracing::instrument(skip(state), err(level = tracing::Level::DEBUG))]
 async fn files_delete(
     State(mut state): State<AppState>,
