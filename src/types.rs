@@ -57,45 +57,38 @@ pub enum ExRes415 {}
 pub enum ExRes422 {}
 pub enum ExRes5XX {}
 
+type ResponseMap = std::collections::BTreeMap<String, utoipa::openapi::RefOr<utoipa::openapi::response::Response>>;
+
+fn build_response(code: &str, desc: &str) -> ResponseMap {
+    ResponsesBuilder::new()
+        .response(code, ResponseBuilder::new().description(desc))
+        .build()
+        .into()
+}
+
 impl IntoResponses for ExRes200 {
-    fn responses() -> std::collections::BTreeMap<String, utoipa::openapi::RefOr<utoipa::openapi::response::Response>> {
-        ResponsesBuilder::new().response("200", ResponseBuilder::new().description("Success")).build().into()
-    }
+    fn responses() -> ResponseMap { build_response("200", "Success") }
 }
 impl IntoResponses for ExRes201 {
-    fn responses() -> std::collections::BTreeMap<String, utoipa::openapi::RefOr<utoipa::openapi::response::Response>> {
-        ResponsesBuilder::new().response("201", ResponseBuilder::new().description("Item created successfully")).build().into()
-    }
+    fn responses() -> ResponseMap { build_response("201", "Item created successfully") }
 }
 impl IntoResponses for ExRes400 {
-    fn responses() -> std::collections::BTreeMap<String, utoipa::openapi::RefOr<utoipa::openapi::response::Response>> {
-        ResponsesBuilder::new().response("400", ResponseBuilder::new().description("The request was invalid. Most likely the body, path, or query format was incorrect")).build().into()
-    }
+    fn responses() -> ResponseMap { build_response("400", "The request was invalid. Most likely the body, path, or query format was incorrect") }
 }
 impl IntoResponses for ExRes401 {
-    fn responses() -> std::collections::BTreeMap<String, utoipa::openapi::RefOr<utoipa::openapi::response::Response>> {
-        ResponsesBuilder::new().response("401", ResponseBuilder::new().description("The required auth token is either missing or invalid")).build().into()
-    }
+    fn responses() -> ResponseMap { build_response("401", "The required auth token is either missing or invalid") }
 }
 impl IntoResponses for ExRes404 {
-    fn responses() -> std::collections::BTreeMap<String, utoipa::openapi::RefOr<utoipa::openapi::response::Response>> {
-        ResponsesBuilder::new().response("404", ResponseBuilder::new().description("Some item related to the request was not found")).build().into()
-    }
+    fn responses() -> ResponseMap { build_response("404", "Some item related to the request was not found") }
 }
 impl IntoResponses for ExRes415 {
-    fn responses() -> std::collections::BTreeMap<String, utoipa::openapi::RefOr<utoipa::openapi::response::Response>> {
-        ResponsesBuilder::new().response("415", ResponseBuilder::new().description("The request's content type was incorrect")).build().into()
-    }
+    fn responses() -> ResponseMap { build_response("415", "The request's content type was incorrect") }
 }
 impl IntoResponses for ExRes422 {
-    fn responses() -> std::collections::BTreeMap<String, utoipa::openapi::RefOr<utoipa::openapi::response::Response>> {
-        ResponsesBuilder::new().response("422", ResponseBuilder::new().description("There was something wrong with the request's body fields")).build().into()
-    }
+    fn responses() -> ResponseMap { build_response("422", "There was something wrong with the request's body fields") }
 }
 impl IntoResponses for ExRes5XX {
-    fn responses() -> std::collections::BTreeMap<String, utoipa::openapi::RefOr<utoipa::openapi::response::Response>> {
-        ResponsesBuilder::new().response("5XX", ResponseBuilder::new().description("Some internal server error happened that wasn't the client's fault")).build().into()
-    }
+    fn responses() -> ResponseMap { build_response("5XX", "Some internal server error happened that wasn't the client's fault") }
 }
 
 /// custom `Json` type used to handle json errors manually (more specifically, convert them to `ResError`)
