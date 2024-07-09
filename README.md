@@ -14,6 +14,8 @@ This repo is something like an API gateway that acts as a:
 - Auth validation layer for the app
 - Translation layer between REST requests and gRPC requests for the app
 
+The documentation for each API route is available at `{SERVICE_ADDR}/swagger-ui` or `{SERVICE_ADDR}/docs`
+
 # How to run
 
 First, make sure that you:
