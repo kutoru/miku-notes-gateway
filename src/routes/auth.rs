@@ -1,4 +1,4 @@
-use crate::{error::ResError, proto::auth::{GetAtRequest, LoginRequest, LogoutRequest, RegisterRequest}, types::{call_grpc_service, new_cookie_ok_res, Json}};
+use crate::{error::ResError, proto::auth::{GetAtRequest, LoginRequest, LogoutRequest, RegisterRequest}, types::{call_grpc_service, new_cookie_ok_res, ExRes400, ExRes401, ExRes415, ExRes422, ExRes5XX, Json}};
 use crate::types::{CookieResult, AppState, CreateAndAddCookie};
 
 use axum::{extract::State, routing::{get, post}, Router};
@@ -28,10 +28,7 @@ pub struct Api;
     post, path = "login",
     responses(
         (status = 200, description = "Success", headers(("set-cookie", description = "Two cookies that include new access and refresh tokens"))),
-        (status = 400, description = "The client did something wrong. Most likely the body format was incorrect"),
-        (status = 415, description = "Request's content type was incorrect"),
-        (status = 422, description = "There was something wrong with the request's body fields"),
-        (status = "5XX", description = "Some internal server error that isn't the client's fault"),
+        ExRes400, ExRes415, ExRes422, ExRes5XX,
     ),
     security(()),
 )]
@@ -71,10 +68,7 @@ async fn login_post(
     post, path = "register",
     responses(
         (status = 200, description = "Success", headers(("set-cookie", description = "Two cookies that include new access and refresh tokens"))),
-        // (status = 400, description = "The client did something wrong. Most likely the body format was incorrect"),
-        (status = 415, description = "Request's content type was incorrect"),
-        (status = 422, description = "There was something wrong with the request's body fields"),
-        (status = "5XX", description = "Some internal server error that isn't the client's fault"),
+        ExRes400, ExRes415, ExRes422, ExRes5XX,
     ),
     security(()),
 )]
@@ -108,8 +102,7 @@ async fn register_post(
     get, path = "access",
     responses(
         (status = 200, description = "Success", headers(("set-cookie", description = "Cookie that includes the new access token"))),
-        (status = 401, description = "The refresh token is either missing or invalid"),
-        (status = "5XX", description = "Some internal server error that isn't the client's fault"),
+        ExRes401, ExRes5XX,
     ),
     security(("refresh_token" = [])),
 )]
@@ -142,8 +135,7 @@ async fn access_get(
     get, path = "logout",
     responses(
         (status = 200, description = "Success", headers(("set-cookie", description = "Two cookies that erase access and refresh tokens"))),
-        (status = 401, description = "The access token is either missing or invalid"),
-        (status = "5XX", description = "Some internal server error that isn't the client's fault"),
+        ExRes401, ExRes5XX,
     ),
     security(("access_token" = [])),
 )]

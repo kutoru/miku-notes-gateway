@@ -1,7 +1,7 @@
 use axum::{extract::{Path, State}, http::StatusCode, routing::{get, patch}, Extension, Router};
 use utoipa::OpenApi;
 
-use crate::{proto::tags::{CreateTagReq, DeleteTagReq, Empty, ReadTagsReq, Tag, TagList, UpdateTagReq}, types::{call_grpc_service, new_ok_res, AppState, Json, ServerResult}};
+use crate::{proto::tags::{CreateTagReq, DeleteTagReq, Empty, ReadTagsReq, Tag, TagList, UpdateTagReq}, types::{call_grpc_service, new_ok_res, AppState, ExRes400, ExRes5XX, ExRes415, ExRes404, ExRes401, ExRes422, Json, ServerResult}};
 
 #[derive(OpenApi)]
 #[openapi(
@@ -23,8 +23,7 @@ pub fn get_router(state: &AppState) -> Router {
     get, path = "",
     responses(
         (status = 200, description = "Success", body = TagList),
-        (status = 401, description = "The access token is either missing or invalid"),
-        (status = "5XX", description = "Some internal server error that isn't the client's fault"),
+        ExRes401, ExRes5XX,
     ),
 )]
 #[tracing::instrument(skip(state), err(level = tracing::Level::DEBUG))]
@@ -48,11 +47,7 @@ async fn tags_get(
     request_body(content = CreateTagReq),
     responses(
         (status = 201, description = "Success", body = Tag),
-        (status = 400, description = "The client did something wrong. Most likely the body format was incorrect"),
-        (status = 401, description = "The access token is either missing or invalid"),
-        (status = 415, description = "Request's content type was incorrect"),
-        (status = 422, description = "There was something wrong with the request's body fields"),
-        (status = "5XX", description = "Some internal server error that isn't the client's fault"),
+        ExRes400, ExRes401, ExRes415, ExRes422, ExRes5XX,
     ),
 )]
 #[tracing::instrument(skip(state), err(level = tracing::Level::DEBUG))]
@@ -79,12 +74,7 @@ async fn tags_post(
     request_body(content = UpdateTagReq),
     responses(
         (status = 200, description = "Success", body = Tag),
-        (status = 400, description = "The client did something wrong. Most likely the body or the path format were incorrect"),
-        (status = 401, description = "The access token is either missing or invalid"),
-        (status = 404, description = "The tag wasn't found"),
-        (status = 415, description = "Request's content type was incorrect"),
-        (status = 422, description = "There was something wrong with the request's body fields"),
-        (status = "5XX", description = "Some internal server error that isn't the client's fault"),
+        ExRes400, ExRes401, ExRes404, ExRes415, ExRes422, ExRes5XX,
     ),
 )]
 #[tracing::instrument(skip(state), err(level = tracing::Level::DEBUG))]
@@ -112,10 +102,7 @@ async fn tags_patch(
     delete, path = "/{tag_id}",
     responses(
         (status = 200, description = "Success", body = Empty),
-        (status = 400, description = "The client did something wrong. Most likely the path format was incorrect"),
-        (status = 401, description = "The access token is either missing or invalid"),
-        (status = 404, description = "The tag wasn't found"),
-        (status = "5XX", description = "Some internal server error that isn't the client's fault"),
+        ExRes400, ExRes401, ExRes404, ExRes5XX,
     ),
 )]
 #[tracing::instrument(skip(state), err(level = tracing::Level::DEBUG))]

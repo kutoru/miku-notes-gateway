@@ -1,6 +1,6 @@
 use crate::proto::files::create_file_metadata::AttachId;
 use crate::proto::files::{CreateFileMetadata, CreateFileReq, DeleteFileReq, DownloadFileMetadata, DownloadFileReq, Empty, File, FileData};
-use crate::types::{call_grpc_service, new_ok_res};
+use crate::types::{call_grpc_service, new_ok_res, ExRes400, ExRes401, ExRes404, ExRes5XX};
 use crate::{types::{AppState, ServerResult}, error::ResError};
 
 use std::cmp::min;
@@ -82,10 +82,7 @@ async fn parse_multipart(multipart: &mut Multipart) -> Result<MultipartBody<'_>,
     request_body(content = ExampleMultipartBody, content_type = "multipart/form-data", description = "Note that despite `note_id` and `shelf_id` are showing as optional, you must always specify exactly one of them"),
     responses(
         (status = 201, description = "File has been successfully created", body = File),
-        (status = 400, description = "The client did something wrong. Most likely the body format was incorrect"),
-        (status = 401, description = "The access token is either missing or invalid"),
-        (status = 404, description = "The note or the shelf were not found"),
-        (status = "5XX", description = "Some internal server error that isn't the client's fault"),
+        ExRes400, ExRes401, ExRes404, ExRes5XX,
     ),
 )]
 #[tracing::instrument(fields(attach_id, file_name), skip(state, multipart), err(level = tracing::Level::DEBUG))]
@@ -171,9 +168,7 @@ async fn files_post(
     get, path = "/dl/{file_hash}",
     responses(
         (status = 200, description = "File has been successfully sent", body = Vec<u8>, content_type = "*/*"),
-        (status = 401, description = "The access token is either missing or invalid"),
-        (status = 404, description = "The file wasn't found"),
-        (status = "5XX", description = "Some internal server error that isn't the client's fault"),
+        ExRes401, ExRes404, ExRes5XX,
     ),
 )]
 #[tracing::instrument(skip(state), err(level = tracing::Level::DEBUG))]
@@ -222,10 +217,7 @@ async fn files_dl_get(
     delete, path = "/{file_id}",
     responses(
         (status = 200, description = "File has been successfully deleted", body = Empty),
-        (status = 400, description = "The client did something wrong. Most likely the path format was incorrect"),
-        (status = 401, description = "The access token is either missing or invalid"),
-        (status = 404, description = "The file wasn't found"),
-        (status = "5XX", description = "Some internal server error that isn't the client's fault"),
+        ExRes400, ExRes401, ExRes404, ExRes5XX,
     ),
 )]
 #[tracing::instrument(skip(state), err(level = tracing::Level::DEBUG))]

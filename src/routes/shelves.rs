@@ -1,7 +1,7 @@
 use axum::{extract::State, http::StatusCode, routing::{get, post}, Extension, Router};
 use utoipa::OpenApi;
 
-use crate::{proto::shelves::{ClearShelfReq, ConvertToNoteReq, ReadShelfReq, Shelf, UpdateShelfReq}, types::{call_grpc_service, new_ok_res, AppState, Json, ServerResult}};
+use crate::{proto::shelves::{ClearShelfReq, ConvertToNoteReq, ReadShelfReq, Shelf, UpdateShelfReq}, types::{call_grpc_service, new_ok_res, AppState, ExRes400, ExRes401, ExRes404, ExRes415, ExRes422, ExRes5XX, Json, ServerResult}};
 
 #[derive(OpenApi)]
 #[openapi(
@@ -23,8 +23,7 @@ pub fn get_router(state: &AppState) -> Router {
     get, path = "",
     responses(
         (status = 200, description = "Success", body = Shelf),
-        (status = 401, description = "The access token is either missing or invalid"),
-        (status = "5XX", description = "Some internal server error that isn't the client's fault"),
+        ExRes401, ExRes5XX,
     ),
 )]
 #[tracing::instrument(skip(state), err(level = tracing::Level::DEBUG))]
@@ -50,12 +49,7 @@ async fn shelf_get(
     request_body(content = UpdateShelfReq),
     responses(
         (status = 200, description = "Success", body = Shelf),
-        (status = 400, description = "The client did something wrong. Most likely the body or the path format were incorrect"),
-        (status = 401, description = "The access token is either missing or invalid"),
-        (status = 404, description = "The shelf wasn't found"),
-        (status = 415, description = "Request's content type was incorrect"),
-        (status = 422, description = "There was something wrong with the request's body fields"),
-        (status = "5XX", description = "Some internal server error that isn't the client's fault"),
+        ExRes400, ExRes401, ExRes404, ExRes415, ExRes422, ExRes5XX,
     ),
 )]
 #[tracing::instrument(skip(state), err(level = tracing::Level::DEBUG))]
@@ -83,10 +77,7 @@ async fn shelf_patch(
     delete, path = "",
     responses(
         (status = 200, description = "Success", body = Shelf),
-        (status = 400, description = "The client did something wrong. Most likely the path format was incorrect"),
-        (status = 401, description = "The access token is either missing or invalid"),
-        (status = 404, description = "The note wasn't found"),
-        (status = "5XX", description = "Some internal server error that isn't the client's fault"),
+        ExRes400, ExRes401, ExRes404, ExRes5XX,
     ),
 )]
 #[tracing::instrument(skip(state), err(level = tracing::Level::DEBUG))]
@@ -112,11 +103,7 @@ async fn shelf_delete(
     request_body(content = ConvertToNoteReq),
     responses(
         (status = 201, description = "Success", body = Shelf),
-        (status = 400, description = "The client did something wrong. Most likely the body format was incorrect"),
-        (status = 401, description = "The access token is either missing or invalid"),
-        (status = 415, description = "Request's content type was incorrect"),
-        (status = 422, description = "There was something wrong with the request's body fields"),
-        (status = "5XX", description = "Some internal server error that isn't the client's fault"),
+        ExRes400, ExRes401, ExRes415, ExRes422, ExRes5XX,
     ),
 )]
 #[tracing::instrument(skip(state), err(level = tracing::Level::DEBUG))]

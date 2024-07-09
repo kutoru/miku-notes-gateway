@@ -6,7 +6,8 @@ use futures_util::Future;
 use serde::Serialize;
 use tonic::transport::Channel;
 use tracing::{debug, error};
-use utoipa::ToSchema;
+use utoipa::openapi::{ResponseBuilder, ResponsesBuilder};
+use utoipa::{IntoResponses, ToSchema};
 
 use crate::proto::shelves::shelves_client::ShelvesClient;
 use crate::proto::{notes::notes_client::NotesClient, tags::tags_client::TagsClient, files::files_client::FilesClient, auth::auth_client::AuthClient};
@@ -44,6 +45,57 @@ pub struct ResultBody<T> {
     pub error: Option<String>,
     #[schema(value_type = Option<Object>)]
     pub data: Option<T>,
+}
+
+// Example responses for the OpenAPI docs
+pub enum ExRes200 {}
+pub enum ExRes201 {}
+pub enum ExRes400 {}
+pub enum ExRes401 {}
+pub enum ExRes404 {}
+pub enum ExRes415 {}
+pub enum ExRes422 {}
+pub enum ExRes5XX {}
+
+impl IntoResponses for ExRes200 {
+    fn responses() -> std::collections::BTreeMap<String, utoipa::openapi::RefOr<utoipa::openapi::response::Response>> {
+        ResponsesBuilder::new().response("200", ResponseBuilder::new().description("Success")).build().into()
+    }
+}
+impl IntoResponses for ExRes201 {
+    fn responses() -> std::collections::BTreeMap<String, utoipa::openapi::RefOr<utoipa::openapi::response::Response>> {
+        ResponsesBuilder::new().response("201", ResponseBuilder::new().description("Item created successfully")).build().into()
+    }
+}
+impl IntoResponses for ExRes400 {
+    fn responses() -> std::collections::BTreeMap<String, utoipa::openapi::RefOr<utoipa::openapi::response::Response>> {
+        ResponsesBuilder::new().response("400", ResponseBuilder::new().description("The request was invalid. Most likely the body, path, or query format was incorrect")).build().into()
+    }
+}
+impl IntoResponses for ExRes401 {
+    fn responses() -> std::collections::BTreeMap<String, utoipa::openapi::RefOr<utoipa::openapi::response::Response>> {
+        ResponsesBuilder::new().response("401", ResponseBuilder::new().description("The required auth token is either missing or invalid")).build().into()
+    }
+}
+impl IntoResponses for ExRes404 {
+    fn responses() -> std::collections::BTreeMap<String, utoipa::openapi::RefOr<utoipa::openapi::response::Response>> {
+        ResponsesBuilder::new().response("404", ResponseBuilder::new().description("Some item related to the request was not found")).build().into()
+    }
+}
+impl IntoResponses for ExRes415 {
+    fn responses() -> std::collections::BTreeMap<String, utoipa::openapi::RefOr<utoipa::openapi::response::Response>> {
+        ResponsesBuilder::new().response("415", ResponseBuilder::new().description("The request's content type was incorrect")).build().into()
+    }
+}
+impl IntoResponses for ExRes422 {
+    fn responses() -> std::collections::BTreeMap<String, utoipa::openapi::RefOr<utoipa::openapi::response::Response>> {
+        ResponsesBuilder::new().response("422", ResponseBuilder::new().description("There was something wrong with the request's body fields")).build().into()
+    }
+}
+impl IntoResponses for ExRes5XX {
+    fn responses() -> std::collections::BTreeMap<String, utoipa::openapi::RefOr<utoipa::openapi::response::Response>> {
+        ResponsesBuilder::new().response("5XX", ResponseBuilder::new().description("Some internal server error happened that wasn't the client's fault")).build().into()
+    }
 }
 
 /// custom `Json` type used to handle json errors manually (more specifically, convert them to `ResError`)

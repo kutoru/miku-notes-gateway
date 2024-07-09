@@ -1,7 +1,7 @@
 use crate::proto::files::File;
 use crate::proto::notes::{AttachTagReq, CreateNoteReq, DeleteNoteReq, DetachTagReq, Empty, Note, NoteList, UpdateNoteReq};
 use crate::proto::tags::Tag;
-use crate::types::{call_grpc_service, new_ok_res, AppState, Json, ServerResult};
+use crate::types::{call_grpc_service, new_ok_res, AppState, ExRes400, ExRes401, ExRes404, ExRes415, ExRes422, ExRes5XX, Json, ServerResult};
 
 use axum::extract::Query;
 use axum::routing::{delete, post};
@@ -43,9 +43,7 @@ pub fn get_router(state: &AppState) -> Router {
     ),
     responses(
         (status = 200, description = "Success", body = NoteList),
-        (status = 400, description = "The client did something wrong. Most likely the parameter format was incorrect"),
-        (status = 401, description = "The access token is either missing or invalid"),
-        (status = "5XX", description = "Some internal server error that isn't the client's fault"),
+        ExRes400, ExRes401, ExRes5XX,
     ),
 )]
 #[tracing::instrument(skip(state), err(level = tracing::Level::DEBUG))]
@@ -74,11 +72,7 @@ async fn notes_get(
     request_body(content = CreateNoteReq),
     responses(
         (status = 201, description = "Success", body = Note),
-        (status = 400, description = "The client did something wrong. Most likely the body format was incorrect"),
-        (status = 401, description = "The access token is either missing or invalid"),
-        (status = 415, description = "Request's content type was incorrect"),
-        (status = 422, description = "There was something wrong with the request's body fields"),
-        (status = "5XX", description = "Some internal server error that isn't the client's fault"),
+        ExRes400, ExRes401, ExRes415, ExRes422, ExRes5XX,
     ),
 )]
 #[tracing::instrument(skip(state), err(level = tracing::Level::DEBUG))]
@@ -105,12 +99,7 @@ async fn notes_post(
     request_body(content = UpdateNoteReq),
     responses(
         (status = 200, description = "Success", body = Note),
-        (status = 400, description = "The client did something wrong. Most likely the body or the path format were incorrect"),
-        (status = 401, description = "The access token is either missing or invalid"),
-        (status = 404, description = "The note wasn't found"),
-        (status = 415, description = "Request's content type was incorrect"),
-        (status = 422, description = "There was something wrong with the request's body fields"),
-        (status = "5XX", description = "Some internal server error that isn't the client's fault"),
+        ExRes400, ExRes401, ExRes404, ExRes415, ExRes422, ExRes5XX,
     ),
 )]
 #[tracing::instrument(skip(state), err(level = tracing::Level::DEBUG))]
@@ -138,10 +127,7 @@ async fn notes_patch(
     delete, path = "/{note_id}",
     responses(
         (status = 200, description = "Success", body = Empty),
-        (status = 400, description = "The client did something wrong. Most likely the path format was incorrect"),
-        (status = 401, description = "The access token is either missing or invalid"),
-        (status = 404, description = "The note wasn't found"),
-        (status = "5XX", description = "Some internal server error that isn't the client's fault"),
+        ExRes400, ExRes401, ExRes404, ExRes5XX,
     ),
 )]
 #[tracing::instrument(skip(state), err(level = tracing::Level::DEBUG))]
@@ -166,12 +152,7 @@ async fn notes_delete(
     request_body(content = AttachTagReq),
     responses(
         (status = 200, description = "Success", body = Empty),
-        (status = 400, description = "The client did something wrong. Most likely the body or the path format were incorrect"),
-        (status = 401, description = "The access token is either missing or invalid"),
-        (status = 404, description = "The note or the tag weren't found"),
-        (status = 415, description = "Request's content type was incorrect"),
-        (status = 422, description = "There was something wrong with the request's body fields"),
-        (status = "5XX", description = "Some internal server error that isn't the client's fault"),
+        ExRes400, ExRes401, ExRes404, ExRes415, ExRes422, ExRes5XX,
     ),
 )]
 #[tracing::instrument(skip(state), err(level = tracing::Level::DEBUG))]
@@ -199,10 +180,7 @@ async fn notes_tag_post(
     delete, path = "/{note_id}/tag/{tag_id}",
     responses(
         (status = 200, description = "Success", body = Empty),
-        (status = 400, description = "The client did something wrong. Most likely the path format was incorrect"),
-        (status = 401, description = "The access token is either missing or invalid"),
-        (status = 404, description = "The note or the tag weren't found"),
-        (status = "5XX", description = "Some internal server error that isn't the client's fault"),
+        ExRes400, ExRes401, ExRes404, ExRes5XX,
     ),
 )]
 #[tracing::instrument(skip(state), err(level = tracing::Level::DEBUG))]
