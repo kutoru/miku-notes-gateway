@@ -3,7 +3,7 @@ use axum::response::IntoResponse;
 use axum_extra::extract::cookie::{CookieJar, Cookie, SameSite};
 use axum::http::StatusCode;
 use futures_util::Future;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use tonic::transport::Channel;
 use tracing::{debug, error};
 use utoipa::openapi::{ResponseBuilder, ResponsesBuilder};
@@ -39,7 +39,7 @@ pub struct AppState {
     pub shelves_client: ShelvesClient<Channel>,
 }
 
-#[derive(Debug, Serialize, Clone, ToSchema)]
+#[derive(Debug, Serialize, Deserialize, Clone, ToSchema)]
 pub struct ResultBody<T> {
     pub success: bool,
     pub error: Option<String>,

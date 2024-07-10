@@ -8,14 +8,26 @@ mod routes;
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
 
+    let state = load_state().await?;
+    let app = routes::get_router(&state)?;
+    let listener = tokio::net::TcpListener::bind(&state.service_addr).await?;
+
+    println!("Listening on {}\n", state.service_addr);
+    axum::serve(listener, app).await?;
+
+    Ok(())
+}
+
+async fn load_state() -> anyhow::Result<AppState> {
     let file_chunk_size = dotenvy::var("MAX_FILE_CHUNK_SIZE")?.parse()?;
+
     let rpc_clients = routes::get_rpc_clients(
         dotenvy::var("AUTH_URL")?,
         dotenvy::var("DATA_URL")?,
         file_chunk_size,
     ).await?;
 
-    let state = AppState {
+    Ok(AppState {
         log_level: dotenvy::var("LOG_LEVEL")?.parse()?,
         service_addr: dotenvy::var("SERVICE_ADDR")?,
         frontend_url: dotenvy::var("FRONTEND_URL")?,
@@ -35,13 +47,5 @@ async fn main() -> anyhow::Result<()> {
         tags_client: rpc_clients.2,
         files_client: rpc_clients.3,
         shelves_client: rpc_clients.4,
-    };
-
-    let app = routes::get_router(&state)?;
-    let listener = tokio::net::TcpListener::bind(&state.service_addr).await?;
-
-    println!("Listening on {}\n", state.service_addr);
-    axum::serve(listener, app).await?;
-
-    Ok(())
+    })
 }

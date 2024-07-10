@@ -17,6 +17,8 @@ mod notes;
 mod tags;
 mod files;
 mod shelves;
+#[cfg(test)]
+mod tests;
 
 pub async fn get_rpc_clients(auth_url: String, data_url: String, max_chunk_size: usize) -> anyhow::Result<(
     AuthClient<Channel>,
