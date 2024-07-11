@@ -4,6 +4,7 @@ use crate::types::{call_grpc_service, new_ok_res, ExRes400, ExRes401, ExRes404, 
 use crate::{types::{AppState, ServerResult}, error::ResError};
 
 use std::cmp::min;
+use std::collections::VecDeque;
 use std::fmt::Debug;
 use axum::body::Body;
 use axum::extract::{multipart, Multipart};
@@ -123,7 +124,7 @@ async fn files_post(
         };
 
         let mut i = 0;
-        let mut chunks = Vec::new();
+        let mut chunks = VecDeque::new();
         while let Some(Ok(chunk)) = file.next().await {
 
             // making sure that the chunk does not exceed the max chunk size.
@@ -133,14 +134,14 @@ async fn files_post(
             while chunk_size * j < chunk.len() {
                 let new_chunk_range = chunk_size * j..min(chunk_size * (j + 1), chunk.len());
                 let new_chunk = chunk.slice(new_chunk_range);
-                chunks.push(new_chunk);
+                chunks.push_back(new_chunk);
                 j += 1;
             }
 
             // yielding chunks
 
             while !chunks.is_empty() {
-                let data = chunks.remove(0).to_vec();
+                let data = chunks.pop_front().unwrap().to_vec();
 
                 i += 1;
                 if i < 10 || (i < 100 && i % 10 == 0) || (i < 1000 && i % 100 == 0) || i % 1000 == 0 {
