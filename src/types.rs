@@ -19,18 +19,18 @@ pub type CookieResult = Result<(StatusCode, CookieJar, Json<ResultBody<()>>), Re
 #[derive(Clone, Debug)]
 pub struct AppState {
     pub log_level: tracing::Level,
-    pub service_addr: String,
+    pub service_port: u16,
     pub frontend_url: String,
     pub req_body_limit: usize,
     pub file_chunk_size: usize,
 
-    pub access_token_exp: i64,
-    pub refresh_token_exp: i64,
-    pub access_token_key: String,
-    pub refresh_token_key: String,
-
     pub auth_token: String,
     pub data_token: String,
+
+    pub access_token_ttl: i64,
+    pub refresh_token_ttl: i64,
+    pub access_token_key: String,
+    pub refresh_token_key: String,
 
     pub auth_client: AuthClient<Channel>,
     pub notes_client: NotesClient<Channel>,

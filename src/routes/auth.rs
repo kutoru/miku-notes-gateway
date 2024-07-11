@@ -56,8 +56,8 @@ async fn login_post(
 
     new_cookie_ok_res(
         jar
-            .add_new_cookie(state.refresh_token_key, res_body.refresh_token, state.refresh_token_exp)
-            .add_new_cookie(state.access_token_key, res_body.access_token, state.access_token_exp)
+            .add_new_cookie(state.refresh_token_key, res_body.refresh_token, state.refresh_token_ttl)
+            .add_new_cookie(state.access_token_key, res_body.access_token, state.access_token_ttl)
     )
 }
 
@@ -90,8 +90,8 @@ async fn register_post(
 
     new_cookie_ok_res(
         jar
-            .add_new_cookie(state.refresh_token_key, res_body.refresh_token, state.refresh_token_exp)
-            .add_new_cookie(state.access_token_key, res_body.access_token, state.access_token_exp)
+            .add_new_cookie(state.refresh_token_key, res_body.refresh_token, state.refresh_token_ttl)
+            .add_new_cookie(state.access_token_key, res_body.access_token, state.access_token_ttl)
     )
 }
 
@@ -126,7 +126,7 @@ async fn access_get(
 
     new_cookie_ok_res(
         jar
-            .add_new_cookie(state.access_token_key, res_body.access_token, state.access_token_exp)
+            .add_new_cookie(state.access_token_key, res_body.access_token, state.access_token_ttl)
     )
 }
 

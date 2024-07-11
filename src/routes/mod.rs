@@ -61,7 +61,7 @@ struct ApiDoc;
 
 pub fn get_router(state: &AppState) -> anyhow::Result<Router> {
     let origins = [
-        format!("http://{}", state.service_addr).parse()?,
+        format!("http://127.0.0.1:{}", state.service_port).parse()?,
         state.frontend_url.parse()?,
     ];
 
@@ -111,7 +111,7 @@ pub fn get_router(state: &AppState) -> anyhow::Result<Router> {
                     .url("/swagger-ui/openapi.json", ApiDoc::openapi())
                     .config(Config::default().with_credentials(true))
             )
-            .merge(Scalar::with_url("/docs", ApiDoc::openapi()))
+            .merge(Scalar::with_url("/scalar", ApiDoc::openapi()))
     )
 }
 

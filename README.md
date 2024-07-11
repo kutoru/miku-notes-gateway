@@ -14,7 +14,7 @@ This repo is something like an API gateway that acts as a:
 - Auth validation layer for the app
 - Translation layer between REST requests and gRPC requests for the app
 
-The documentation for each API route is available at `{SERVICE_ADDR}/swagger-ui` or `{SERVICE_ADDR}/docs`
+Once you have successfully started the service, the documentation for each API route will be available at `http://127.0.0.1:{SERVICE_PORT}/swagger-ui` or `http://127.0.0.1:{SERVICE_PORT}/scalar`
 
 # How to run
 
@@ -32,26 +32,26 @@ After that you can do the usual `cargo run` in the root directory
 The .env file should be located in the root directory and have the following contents:
 ```
 LOG_LEVEL=info
-SERVICE_ADDR=127.0.0.1:33033
+SERVICE_PORT=3030
 FRONTEND_URL=http://localhost:5173
-MAX_REQUEST_BODY_SIZE=4096
+MAX_REQUEST_BODY_SIZE=8192
 MAX_FILE_CHUNK_SIZE=8
 
-AUTH_URL=http://127.0.0.1:44044
-DATA_URL=http://127.0.0.1:55055
+AUTH_URL=http://127.0.0.1:4040
+DATA_URL=http://127.0.0.1:5050
 AUTH_TOKEN=7osu2game7
 DATA_TOKEN=39sankyu39
 
+ACCESS_TOKEN_TTL=60
+REFRESH_TOKEN_TTL=300
 ACCESS_TOKEN_KEY=at
 REFRESH_TOKEN_KEY=rt
-ACCESS_TOKEN_EXP=30
-REFRESH_TOKEN_EXP=120
 ```
 Where:
 - `LOG_LEVEL` is the log level for the service. Can be either `debug`, `info` or `error`
-- `SERVICE_ADDR` is the address that this service will run on
+- `SERVICE_PORT` is the port that this service will run on
 - `FRONTEND_URL` is the url that the **Frontend** is running on. Required for CORS stuff
-- `MAX_REQUEST_BODY_SIZE` is an unsigned int that will become the maximum allowed size (in megabytes) for received multipart request bodies. Files received from multipart bodies never get loaded into memory, so big numbers (up to like 50GB) should in theory be fine as a value for this field, although big files like that will take a long time to get uploaded
+- `MAX_REQUEST_BODY_SIZE` is an unsigned int that will become the maximum allowed size (in megabytes) for received multipart request bodies. Files received from multipart bodies never get fully loaded into memory, so big numbers (up to like 50GB) should in theory be fine as a value for this field, although big files like that will take a long time to get uploaded
 - `MAX_FILE_CHUNK_SIZE` is an unsigned int that will become the maximum allowed size (in megabytes) for sent file chunks in gRPC messages. **Note** that this value should be identical to the **Data service**'s .env value with the same key name, or else the service won't be able to send/decode gRPC messages
 
 - `AUTH_URL` is the url that the **Auth service** is running on
@@ -59,7 +59,7 @@ Where:
 - `AUTH_TOKEN` is a string that will be passed as a bearer token along with each request to the **Auth service**
 - `DATA_TOKEN` is a string that will be passed as a bearer token along with each request to the **Data service**
 
+- `ACCESS_TOKEN_TTL` is an int that will become the access cookie's expiry time (in seconds). Should probably have the same value with the `access_ttl` key in the **Auth service**
+- `REFRESH_TOKEN_TTL` is an int that will become the refresh cookie's expiry time (in seconds). Should probably have the same value with the `refresh_ttl` key in the **Auth service**
 - `ACCESS_TOKEN_KEY` is a short string that will become the access cookie's key 
 - `REFRESH_TOKEN_KEY` is a short string that will become the refresh cookie's key 
-- `ACCESS_TOKEN_EXP` is an int that will become the access cookie's expiry time (in seconds). Should probably have the same value with the `access_ttl` key in the **Auth service**
-- `REFRESH_TOKEN_EXP` is an int that will become the refresh cookie's expiry time (in seconds). Should probably have the same value with the `refresh_ttl` key in the **Auth service**
