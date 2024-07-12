@@ -9,7 +9,7 @@ mod routes;
 async fn main() -> anyhow::Result<()> {
 
     let state = load_state().await?;
-    let addr = format!("127.0.0.1:{}", state.service_port);
+    let addr = format!("[::]:{}", state.service_port);
     let app = routes::get_router(&state)?;
     let listener = tokio::net::TcpListener::bind(&addr).await?;
 
