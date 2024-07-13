@@ -1,28 +1,24 @@
 # ?
 
-This is one out of four parts of [Miku notes]().
-
-Application parts:
-- [Auth service](https://github.com/kuromii5/sso-auth)
-- [Data service](https://github.com/kutoru/miku-notes-data)
-- [Gateway service](https://github.com/kutoru/miku-notes-gateway) (this repo)
-- [Frontend](https://github.com/kinokorain/Miku-notes-frontend)
-
-This repo is something like an API gateway that acts as a:
-- Proxy for the Auth service and the Data service
-- Single point of entry for the Frontend
+This is one out of four parts of [Miku Notes](https://github.com/kutoru/miku-notes). This part is something like an API gateway that acts as a:
+- Proxy for the **Auth service** and the **Data service**
+- Single point of entry for the **Frontend**
 - Auth validation layer for the app
 - Translation layer between REST requests and gRPC requests for the app
 
-Once you have successfully started the service, the documentation for each API route will be available at `http://127.0.0.1:{SERVICE_PORT}/swagger-ui` or `http://127.0.0.1:{SERVICE_PORT}/scalar`
+Once you have successfully started the service, the documentation for each API route will be available at `http://localhost:{SERVICE_PORT}/swagger-ui` or `http://localhost:{SERVICE_PORT}/scalar`
 
-# How to run
+# How to run this service
+
+**It is highly recommended** to run this service along with other parts simultaneously by using docker compose. The instructions for that can be found in the [main repository](https://github.com/kutoru/miku-notes).
+
+With having that said, you could still run the service manually by following the instructions below.
 
 First, make sure that you:
 - have cloned the submodule in the `./proto` directory
 - have the [protoc](https://grpc.io/docs/protoc-installation) binary on your path
 - have created and filled out your [.env configuration](#env)
-- have both **Auth service** and **Data service** launched and running on URLs according to your .env configuration
+- have both **Auth service** and **Data service** set up and running on URLs according to your .env configuration
 - optionally, have either the **Frontend** running, or make requests manually via things like curl or Postman
 
 After that you can do the usual `cargo run` in the root directory
