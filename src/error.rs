@@ -85,7 +85,6 @@ impl From<tonic::Status> for ResError {
         let msg = msg(&value);
 
         match value.code() {
-            tonic::Code::NotFound => Self::NotFound(msg),
             tonic::Code::PermissionDenied => Self::Forbidden(msg),
             tonic::Code::InvalidArgument => Self::InvalidFields(msg),
             tonic::Code::AlreadyExists => Self::BadRequest(msg),
@@ -94,6 +93,10 @@ impl From<tonic::Status> for ResError {
                 "invalid authorization token" => Self::ServerError(msg),
                 _ => Self::Unauthorized(msg),
             },
+            tonic::Code::NotFound => match value.message() {
+                "the refresh token does not exist" => Self::Unauthorized(msg),
+                _ => Self::NotFound(msg),
+            }
 
             _ => Self::ServerError(msg),
         }
