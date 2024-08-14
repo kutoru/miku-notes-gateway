@@ -43,6 +43,7 @@ pub struct Api;
 struct ExampleMultipartBody {
     note_id: Option<i32>,
     shelf_id: Option<i32>,
+    file_size: u64,
     file: Vec<u8>,
 }
 
@@ -56,6 +57,7 @@ impl From<FileData> for axum::body::Bytes {
 #[derive(Debug)]
 struct MultipartBody<'a> {
     attach_id: AttachId,
+    file_size: u64,
     file: multipart::Field<'a>,
 }
 
@@ -64,7 +66,12 @@ async fn parse_multipart(multipart: &mut Multipart) -> Result<MultipartBody<'_>,
     let attach_id = match multipart.next_field().await? {
         Some(f) if f.name() == Some("note_id") => AttachId::NoteId(f.text().await?.parse()?),
         Some(f) if f.name() == Some("shelf_id") => AttachId::ShelfId(f.text().await?.parse()?),
-        _ => return Err(ResError::InvalidFields("Could not get either a note_id nor shelf_id from the multipart body".into())),
+        _ => return Err(ResError::InvalidFields("Could not get either note_id nor shelf_id from the multipart body".into())),
+    };
+
+    let file_size = match multipart.next_field().await? {
+        Some(f) if f.name() == Some("file_size") => f.text().await?.parse()?,
+        _ => return Err(ResError::InvalidFields("Could not get the file_size from the multipart body".into())),
     };
 
     let file = match multipart.next_field().await? {
@@ -72,7 +79,7 @@ async fn parse_multipart(multipart: &mut Multipart) -> Result<MultipartBody<'_>,
         _ => return Err(ResError::InvalidFields("Could not get the file from the multipart body".into())),
     };
 
-    Ok(MultipartBody { attach_id, file })
+    Ok(MultipartBody { attach_id, file_size, file })
 }
 
 /// Create a new file
@@ -80,9 +87,9 @@ async fn parse_multipart(multipart: &mut Multipart) -> Result<MultipartBody<'_>,
 /// Post (upload) a new file and immediately attach it to either a note or a shelf
 #[utoipa::path(
     post, path = "",
-    request_body(content = ExampleMultipartBody, content_type = "multipart/form-data", description = "Note that despite `note_id` and `shelf_id` are showing as optional, you must always specify exactly one of them"),
+    request_body(content = ExampleMultipartBody, content_type = "multipart/form-data", description = "Note that despite `note_id` and `shelf_id` are showing as optional, you must always specify exactly one of them.<br>Also note that fields must be specified in the body in the following order:<br>1) `note_id` or `shelf_id`<br>2) `file_size`<br>3) `file`"),
     responses(
-        (status = 201, description = "File has been successfully created", body = File),
+        (status = 201, description = "File has been successfully uploaded", body = File),
         ExRes400, ExRes401, ExRes404, ExRes5XX,
     ),
 )]
@@ -104,7 +111,7 @@ async fn files_post(
 
         // extracting basic file info
 
-        let MultipartBody { attach_id, mut file } = match parse_multipart(&mut multipart).await {
+        let MultipartBody { attach_id, file_size, mut file } = match parse_multipart(&mut multipart).await {
             Ok(b) => b,
             Err(e) => return debug!(parent: &span, "{e}"),
         };
@@ -118,7 +125,7 @@ async fn files_post(
 
         yield CreateFileReq {
             metadata: Some(CreateFileMetadata {
-                user_id, name, attach_id: Some(attach_id),
+                user_id, name, attach_id: Some(attach_id), file_size,
             }),
             data: Vec::new(),
         };
