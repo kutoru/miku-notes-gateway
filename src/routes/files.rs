@@ -4,9 +4,8 @@ use crate::types::{call_grpc_service, new_ok_res, ExRes400, ExRes401, ExRes404, 
 use crate::{types::{AppState, ServerResult}, error::ResError};
 
 use std::cmp::min;
-use std::collections::VecDeque;
 use std::fmt::Debug;
-use axum::body::Body;
+use axum::body::{Body, Bytes};
 use axum::extract::{multipart, Multipart};
 use axum::http::header;
 use axum::response::IntoResponse;
@@ -130,25 +129,44 @@ async fn files_post(
             data: Vec::new(),
         };
 
+        let mut curr_chunk: Vec<u8> = Vec::new();
+        let mut next_chunk: Bytes;
+        let mut next_chunk_offset = 0;
+
         let mut i = 0;
-        let mut chunks = VecDeque::new();
         while let Some(Ok(chunk)) = file.next().await {
 
-            // making sure that the chunk does not exceed the max chunk size.
-            // if it does, splitting it
+            next_chunk = chunk;
 
-            let mut j = 0;
-            while chunk_size * j < chunk.len() {
-                let new_chunk_range = chunk_size * j..min(chunk_size * (j + 1), chunk.len());
-                let new_chunk = chunk.slice(new_chunk_range);
-                chunks.push_back(new_chunk);
-                j += 1;
-            }
+            loop {
 
-            // yielding chunks
+                // if the chunk has been exhausted, getting a new one
 
-            while !chunks.is_empty() {
-                let data = chunks.pop_front().unwrap().to_vec();
+                if next_chunk_offset == next_chunk.len() {
+                    next_chunk_offset = 0;
+                    break;
+                }
+
+                // if the length is small enough, then appending more data to the chunk
+
+                if curr_chunk.len() < chunk_size {
+                    let range_start = next_chunk_offset;
+                    let range_end = min(chunk_size - curr_chunk.len(), next_chunk.len());
+                    next_chunk_offset = range_end;
+
+                    let new_chunk_range = range_start..range_end;
+                    curr_chunk.append(&mut next_chunk.slice(new_chunk_range).to_vec());
+                }
+
+                // if the length is still small, appending even more data
+
+                if curr_chunk.len() < chunk_size {
+                    continue;
+                }
+
+                // yielding the chunk once the length is big enough
+
+                let data = std::mem::take(&mut curr_chunk);
 
                 i += 1;
                 if i < 10 || (i < 100 && i % 10 == 0) || (i < 1000 && i % 100 == 0) || i % 1000 == 0 {
@@ -157,6 +175,17 @@ async fn files_post(
 
                 yield CreateFileReq { metadata: None, data };
             }
+        }
+
+        // yielding the last chunk if it isn't empty
+
+        if !curr_chunk.is_empty() {
+            i += 1;
+            if i < 10 || (i < 100 && i % 10 == 0) || (i < 1000 && i % 100 == 0) || i % 1000 == 0 {
+                debug!(parent: &span, "chunk {}: {}", i, curr_chunk.len());
+            }
+
+            yield CreateFileReq { metadata: None, data: curr_chunk };
         }
     };
 
