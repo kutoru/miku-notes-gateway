@@ -69,6 +69,7 @@ pub fn get_router(state: &AppState) -> anyhow::Result<Router> {
         .allow_methods([Method::GET, Method::POST, Method::DELETE, Method::PATCH, Method::OPTIONS])
         .allow_origin(origins)
         .allow_headers([header::ACCEPT, header::CONTENT_TYPE])
+        .expose_headers([header::CONTENT_DISPOSITION])
         .allow_credentials(true);
 
     let auth_router = auth::get_router(state);
